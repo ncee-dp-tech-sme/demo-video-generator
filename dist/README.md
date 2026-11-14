@@ -15,7 +15,7 @@ The narrative method is the one used for the two demo scripts: intake, source fa
 `| TIMING | VISUAL | VO |` table, production plan, explicit approval, video production, outcome record.
 
 Repository: <https://github.com/ncee-dp-tech-sme/demo-video-generator>
-Package version 2.2.1 (pipeline files bundled in the zip; see the change notes in section 13).
+Package version 2.2.2 (pipeline files bundled in the zip; see the change notes in section 13).
 
 ## Contents
 
@@ -47,7 +47,7 @@ Package version 2.2.1 (pipeline files bundled in the zip; see the change notes i
 | `HexStrike_AV_script_v1.md`, `IBM_Bob_Client_Demo_script_v1.md`, `IBM_Bob_Client_Demo_script_v2.md` | Script tables |
 | `requirements.txt`, `.env.example` | Pipeline dependencies and settings (`VOICE`, `SPEECH_RATE`, `FPS`, `LOG_LEVEL`, `SCRIPT_FILE`, `BUILD_DIR`) |
 | `dist/` | Sources of the Demo Narrative Builder package, including the whole video pipeline in `dist/pipeline/` (layout in 6.1) |
-| `releases/` | The ready-to-install zip `demo-narrative-builder-2.2.1.zip` and its `SHA256SUMS` |
+| `releases/` | The ready-to-install zip `demo-narrative-builder-2.2.2.zip` and its `SHA256SUMS` |
 | `docs/README.md` | Copy of this document (kept identical to the root `README.md`) |
 | `hexstrikesdlc/`, `task-outcomes/` | Source facts and task records |
 
@@ -143,14 +143,14 @@ Install the Demo Narrative Builder from the release zip (details and alternative
 
 ```bash
 # 1. download the zip and its checksum (needs `gh auth login`; or use the browser, see 4.1)
-for f in demo-narrative-builder-2.2.1.zip SHA256SUMS; do
+for f in demo-narrative-builder-2.2.2.zip SHA256SUMS; do
   gh api -H "Accept: application/vnd.github.raw" \
     "repos/ncee-dp-tech-sme/demo-video-generator/contents/releases/$f" > "$f"
 done
-shasum -a 256 -c SHA256SUMS                      # must print: demo-narrative-builder-2.2.1.zip: OK
+shasum -a 256 -c SHA256SUMS                      # must print: demo-narrative-builder-2.2.2.zip: OK
 
 # 2. unpack, preview, install
-unzip demo-narrative-builder-2.2.1.zip && cd demo-narrative-builder
+unzip demo-narrative-builder-2.2.2.zip && cd demo-narrative-builder
 ./install.sh --dry-run
 ./install.sh --scope workspace --target /path/to/your/workspace      # asks for confirmation
 ```
@@ -240,14 +240,14 @@ Needed only for step 9. Steps 1 to 8 work without them.
 
 ### 4.1 Download the release zip
 
-`releases/demo-narrative-builder-2.2.1.zip` contains only the files the installer needs: no caches, `.DS_Store`,
+`releases/demo-narrative-builder-2.2.2.zip` contains only the files the installer needs: no caches, `.DS_Store`,
 `.env` or narratives. It unpacks to a folder `demo-narrative-builder/`.
 
 - **Browser:** open <https://github.com/ncee-dp-tech-sme/demo-video-generator>, go to `releases/`, open
-  `demo-narrative-builder-2.2.1.zip` and `SHA256SUMS`, and click **Download raw file** for each.
+  `demo-narrative-builder-2.2.2.zip` and `SHA256SUMS`, and click **Download raw file** for each.
 - **GitHub CLI** (after `gh auth login`):
   ```bash
-  for f in demo-narrative-builder-2.2.1.zip SHA256SUMS; do
+  for f in demo-narrative-builder-2.2.2.zip SHA256SUMS; do
     gh api -H "Accept: application/vnd.github.raw" \
       "repos/ncee-dp-tech-sme/demo-video-generator/contents/releases/$f" > "$f"
   done
@@ -258,13 +258,13 @@ Needed only for step 9. Steps 1 to 8 work without them.
 Verify the download (both files in the same folder):
 
 ```bash
-shasum -a 256 -c SHA256SUMS        # demo-narrative-builder-2.2.1.zip: OK
+shasum -a 256 -c SHA256SUMS        # demo-narrative-builder-2.2.2.zip: OK
 ```
 
 ### 4.2 Automated install (recommended)
 
 ```bash
-unzip demo-narrative-builder-2.2.1.zip && cd demo-narrative-builder
+unzip demo-narrative-builder-2.2.2.zip && cd demo-narrative-builder
 ./install.sh --dry-run                                   # show what would happen, changes nothing
 ./install.sh --scope workspace --target /path/to/ws      # project-only install
 ./install.sh --scope global                              # all workspaces (~/.bob)
@@ -315,7 +315,7 @@ set `DEMOBUILDER_DIR` in `<root>/.bob/demo-narrative-builder/.env` afterwards. P
 
 ```bash
 cd <root>/.bob/demo-narrative-builder
-.venv/bin/python -m unittest discover -s tests          # 40 tests, all OK
+.venv/bin/python -m unittest discover -s tests          # 43 tests, all OK
 .venv/bin/python tools/skills.py verify                 # registry, 11 skills, mode and question bank consistent
 .venv/bin/python tools/validate_script.py examples/sample_script_v1.md     # PASS
 .venv/bin/python tools/ingest.py examples/sample_source.txt --out /tmp/dnb-check
@@ -452,7 +452,7 @@ Any step skill can also be entered directly; `skills.py check` verifies the file
 ```text
 dist/                               (demo-narrative-builder/ in the zip)
   README.md                         this document (identical copy of the repository root README.md)
-  VERSION                           2.2.1
+  VERSION                           2.2.2
   registry.json                     skill catalog: steps 1-9, support and orchestrator skills, files in and out
   requirements.txt                  pinned Python dependencies
   .env.example                      all runtime settings with comments
@@ -554,7 +554,7 @@ cd <root>/.bob/demo-narrative-builder      # or dist/ with the dependencies inst
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-40 tests cover TXT, DOCX (including an entity-expansion attack), PDF, HTML extraction, corrupt and oversize
+43 tests cover TXT, DOCX (including an entity-expansion attack), PDF, HTML extraction, corrupt and oversize
 files, slug traversal, URL rules, private address blocking, the localhost block, the validator (pass, timing gap,
 voice-over overrun, missing follow-ups or gate, placeholders, runtime mismatch, template not passing, production plan
 required), the skill system (nine contiguous steps with step 9 = video production, registry, SKILL.md files, mode,
@@ -677,6 +677,8 @@ export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_R
 ---
 
 ## 13. Change notes
+
+**2.2.2 (14 Nov 2026), full article text from IBM Community (HigherLogic) pages.** The article was in the static HTML, but the container choice preferred a 31-word "Content" widget over the unhinted article container, so ingest reported "Only 31 words extracted". Container hints are now ignored when the hinted container holds under half of the page text, and extracted blocks keep document order (nested tables no longer move to the end). No new requests, no new dependencies and no change to the network guards. The real page now yields 1,869 words with no warning. 43 unit and security tests.
 
 **2.2.1 (14 Nov 2026), generic CMS HTML fallback and heading fit.** Ingestion of HigherLogic/ASP.NET and community CMS
 pages was blocked because outer `<form>` wrappers were skipped and no `<article>`/`<main>` tag was present; ingest now

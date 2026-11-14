@@ -1,0 +1,162 @@
+PROMPT: commit and sync everything and next re-ingest the blog URL to confirm the real page now extracts without the saved copy. use a new task
+DATE:   Sat Nov 14 22:42:25 CET 2026
+
+================================================================================
+JOB 1 — GIT COMMIT & SYNC
+================================================================================
+
+COMMITS
+-------
+08621bb  feat: 2.2.0 animated step-9 video renderer (storyboard + scene engine)
+88346f9  fix: 2.2.1 ingest extractor robustness + heading normalisation
+
+COMMIT 08621bb — 2.2.0 (13 files changed, 1753 insertions, 148 deletions)
+  Added:    dist/pipeline/scene_engine.py
+  Added:    dist/pipeline/storyboard.py
+  Modified: dist/pipeline/generic_video.py
+  Modified: dist/tools/production.py
+  Modified: dist/skills/narrative-09-video-production/SKILL.md
+  Modified: dist/tests/test_tools.py
+  Modified: README.md, dist/README.md, docs/README.md, dist/VERSION
+  Replaced: releases/demo-narrative-builder-2.1.1.zip (deleted)
+            → releases/demo-narrative-builder-2.2.1.zip (added)
+  Modified: releases/SHA256SUMS
+
+COMMIT 88346f9 — 2.2.1 (4 files changed, 319 insertions, 30 deletions)
+  Modified: dist/tools/ingest.py
+  Added:    task-outcomes/guardium_exposure_qradar_test_video.txt
+  Added:    task-outcomes/plugin_2_2_1_extractor_and_headings.txt
+  Added:    task-outcomes/plugin_animated_video_fix.txt
+
+SYNC RESULT
+-----------
+  git fetch origin    — no remote changes
+  git pull --rebase   — not needed (already up to date)
+  git push origin main — pushed 6f6ef64..88346f9  main -> main
+  Secret scan (pre-commit hook): no secrets found in either commit
+  Final state: "Your branch is up to date with 'origin/main'. nothing to commit, working tree clean."
+
+SECURITY / HYGIENE CHECKS
+--------------------------
+  .gitignore covers: .env, .venv/, narratives/, __pycache__, output/, build/,
+                     *.mp4, *.wav (via output/), .DS_Store, secrets*, *.key, *.pem
+  narratives/ — excluded by .gitignore, NOT committed (correct)
+  Diff secret scan — no api keys, tokens, passwords, bearer tokens found
+  IBM Vault Radar hook — scanned both commits, no secrets found
+
+================================================================================
+JOB 2 — RE-INGEST COMPARISON
+================================================================================
+
+COMMAND USED
+------------
+  .venv/bin/python dist/tools/ingest.py \
+    "https://community.ibm.com/community/user/blogs/erwin-friethoff/2026/08/05/guardium-exposure-manager-qradar-log-sources" \
+    --out narratives/guardium-reingest-check \
+    --slug guardium-reingest
+
+OUTPUT FOLDER
+-------------
+  narratives/guardium-reingest-check/guardium-reingest/
+    source.json
+    source.txt
+
+COMPARISON TABLE
+----------------
+  Field               Re-ingest (live, 2026-11-14)        Reference (source.json + blog_source.md)
+  ------------------  ----------------------------------  -----------------------------------------
+  Word count          31                                  1751 (source.json) / ~1900 (blog_source.md)
+  Section count       1                                   16
+  Title               "Guardium Exposure Manager,QRadar   "Building Guardium Exposure Manager →
+                      …A Practitioner's Guide"             QRadar … A Practitioner's Guide"
+  Author              URL (profile link only)             "Erwin Friethoff"
+  Published           2026-08-06T03:09:59.223Z            2026-08-05
+  Retrieved at        2026-11-14T21:42:04+00:00           2026-11-14T21:13:42+00:00
+  sha256              8bde45bf5c027478…  (present ✓)      e1c21c10bf053e68… (present ✓)
+  untrusted_content   true ✓                              true ✓
+  Warnings            "Only 31 words extracted …"         none
+  Nav/cookie/footer   None — clean extraction ✓           n/a
+  Article body        INCOMPLETE — only community group   COMPLETE — 15 article sections
+                      tagline ("Join this online topic    from Introduction through Resources
+                      group…") received
+
+KEY HEADINGS PRESENT IN REFERENCE — STATUS IN RE-INGEST
+--------------------------------------------------------
+  Introduction                    ✗ absent
+  Architecture Overview           ✗ absent
+  The Three Connectors            ✗ absent
+  Connector 1/2/3                 ✗ absent
+  Prerequisites and Authentication ✗ absent
+  Step 1–6                        ✗ absent
+  Understanding the Data          ✗ absent
+  Lessons Learned                 ✗ absent
+  Resources                       ✗ absent
+
+DISTINCTIVE SENTENCES CHECKED
+-------------------------------
+  "Your IBM Guardium Exposure Manager instance is continuously flagging…"  — absent
+  "No middleware, no custom application server, nothing to patch."          — absent
+  "device-type-id="4015" as a placeholder"                                 — absent
+
+SAFETY FIELDS
+-------------
+  untrusted_content: true  ✓ (both runs)
+  sha256: present          ✓ (both runs)
+
+================================================================================
+VERDICT
+================================================================================
+
+The re-ingest confirms that the 2.2.1 extractor:
+  ✓ Correctly suppresses noise (no nav / cookie banner / footer leaked in)
+  ✓ Preserves safety fields (untrusted_content, sha256) in both runs
+  ✓ Emits the correct low-word-count warning instead of silently truncating
+  ✗ Cannot extract the full article body from the live page
+
+ROOT CAUSE: community.ibm.com is a JavaScript-rendered Single Page Application.
+The article content is hydrated client-side — it does not exist in the static
+HTML returned by an HTTP GET request. The extractor received only the page
+skeleton and the IBM Community sidebar tagline ("IBM Guardium" topic group). This
+is not an extractor bug introduced or regressed in 2.2.1; it is a fundamental
+JS-rendering limitation of the current static fetch approach.
+
+EVIDENCE: The 31 words extracted ("Join this online topic group to communicate
+across Security product users…") are from the IBM Community topic group sidebar,
+not the blog article. The article title IS extracted correctly from the <title>
+tag, confirming the HTTP connection succeeded and the page loaded at all.
+
+PROPOSED FIX (not released — awaiting user approval):
+  Option A — Playwright / headless browser fetch: Add an optional
+             `--headless` flag to ingest.py that uses playwright to render
+             the page before scraping. Requires: pip install playwright + 
+             playwright install chromium. Would resolve JS-rendered pages
+             universally.
+  Option B — Accept a saved HTML or Markdown export: User exports the blog
+             post as HTML/Markdown locally and passes it to ingest.py as a
+             --type txt or --type docx input. No new dependency, but manual
+             step for the user.
+  Option C — IBM Community RSS/API: If the community exposes a public API
+             or RSS feed for blog posts, ingest.py could use that endpoint
+             instead of HTML scraping.
+
+The saved copy (blog_source.md) in narratives/guardium-exposure-qradar-test/
+remains the best available source for narrative generation until one of the
+above options is implemented.
+
+================================================================================
+OPEN ISSUES
+================================================================================
+
+1. community.ibm.com blog pages require JS rendering — static fetch yields ~31
+   words. Fix proposal above (Option A recommended). Release only after user
+   approval.
+
+2. The new narrative folder (narratives/guardium-reingest-check/) and this
+   task-outcomes file (task-outcomes/git_sync_and_reingest_check.txt) were
+   created AFTER the commit in Job 1. They are currently UNCOMMITTED.
+   narratives/ is gitignored so the scratch folder will never be committed.
+   The task-outcomes file CAN be committed in a follow-up commit if desired.
+
+================================================================================
+END
+================================================================================

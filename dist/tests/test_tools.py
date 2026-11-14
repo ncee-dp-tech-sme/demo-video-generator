@@ -151,6 +151,44 @@ class IngestTests(unittest.TestCase):
         self.assertNotIn("cookies", sections[0]["text"])
         self.assertNotIn("Copyright", sections[0]["text"])
 
+    # Regression: a small hinted "Content" widget must not hide the real (unhinted) article container - Sat 14 Nov 2026 22:50 CET
+    def test_html_small_hinted_widget_does_not_hide_article(self):
+        words = " ".join(["exposure"] * 200)
+        html = (
+            "<html><head><title>Blog</title></head><body><form>"
+            "<div class='row'><div class='Content'><p>Short group blurb about the community and its members.</p></div></div>"
+            "<div class='row margin-top-large'><div class='col-md-12'>"
+            f"<h2>Introduction</h2><p>{words}</p>"
+            "<h2>Lessons Learned</h2><p>Second section text with enough words to count.</p>"
+            "</div></div></form></body></html>"
+        )
+        doc = ingest.parse_html(html.encode(), "utf-8")
+        headings = [s["heading"] for s in doc.sections()]
+        self.assertEqual(headings, ["Introduction", "Lessons Learned"])
+        self.assertNotIn("blurb", " ".join(s["text"] for s in doc.sections()))
+
+    def test_html_hinted_container_still_preferred_when_substantial(self):
+        words = " ".join(["article"] * 100)
+        html = (
+            "<html><body><div class='x'><p>" + " ".join(["other"] * 60) + "</p></div>"
+            f"<div class='post-body'><p>{words}</p></div></body></html>"
+        )
+        doc = ingest.parse_html(html.encode(), "utf-8")
+        self.assertIn("article", doc.sections()[0]["text"])
+        self.assertNotIn("other", doc.sections()[0]["text"])
+
+    # Tables nested in the article stay at their position in the text - Sat 14 Nov 2026 22:53 CET
+    def test_html_nested_table_keeps_document_order(self):
+        words = " ".join(["body"] * 120)
+        html = (
+            "<html><body><div class='wrap'><h2>First</h2><p>" + words + "</p>"
+            "<table><tr><td>table cell text</td></tr></table>"
+            "<h2>Second</h2><p>after the table</p></div></body></html>"
+        )
+        doc = ingest.parse_html(html.encode(), "utf-8")
+        self.assertEqual([s["heading"] for s in doc.sections()], ["First", "Second"])
+        self.assertTrue(doc.sections()[0]["text"].endswith("table cell text"))
+
     def test_unsupported_extension_and_missing_file(self):
         f = self.dir / "x.exe"
         f.write_bytes(b"MZ")

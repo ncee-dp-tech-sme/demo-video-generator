@@ -7,6 +7,8 @@
 # Change log
 # Sat 14 Nov 2026 19:14 CET - Initial version: URL (SSRF-guarded), PDF, TXT/MD and DOCX ingestion.
 # Sat 14 Nov 2026 22:30 CET - Generic content-container fallback for CMS pages (HigherLogic/ASP.NET/custom divs).
+# Sat 14 Nov 2026 22:48 CET - Ignore hinted containers that hold under half of the page text (IBM Community article was hidden by a 31-word "Content" widget).
+# Sat 14 Nov 2026 22:52 CET - Keep extracted blocks in document order (tables nested in the article were appended at the end).
 
 import argparse
 import hashlib
@@ -200,12 +202,15 @@ class _HTMLExtractor(HTMLParser):
         self._in_title = False
         self._cur_block = None
         self._buf = []
+        self._seq = 0
 
+    # Store a finished block with its document-order number - Sat 14 Nov 2026 22:52 CET
     def flush(self):
         text = norm(" ".join(self._buf))
         if text and self._cur_block:
             kind, level = self._cur_block
-            self._stack[-1].blocks.append((kind, level, text))
+            self._stack[-1].blocks.append((kind, level, text, self._seq))
+            self._seq += 1
         self._cur_block, self._buf = None, []
 
     def handle_starttag(self, tag, attrs):
@@ -277,7 +282,7 @@ def parse_html(raw, charset):
         blks = list(node.blocks)
         for c in node.children:
             blks.extend(all_blocks(c))
-        return blks
+        return sorted(blks, key=lambda b: b[3])
 
     def find_tags(node, tags):
         found = []
@@ -310,8 +315,13 @@ def parse_html(raw, charset):
                 collect(c)
         collect(ex.root)
 
+        # A hinted container is only trusted when it holds a substantial share of the page text;
+        # otherwise a small "Content" widget would hide the real article - Sat 14 Nov 2026 22:48 CET
         hinted = [n for n in all_nodes if n[2] and n[1] > 0]
-        pool = hinted if hinted else [n for n in all_nodes if n[1] > 0]
+        everything = [n for n in all_nodes if n[1] > 0]
+        if hinted and everything and max(n[1] for n in hinted) < 0.5 * max(n[1] for n in everything):
+            hinted = []
+        pool = hinted if hinted else everything
         if pool:
             max_words = max(n[1] for n in pool)
             close = [n for n in pool if n[1] >= 0.85 * max_words]
@@ -321,7 +331,7 @@ def parse_html(raw, charset):
             use_blocks = all_blocks(ex.root)
 
     doc = Doc(norm(ex.meta.get("og:title") or ex.title))
-    for kind, level, text in use_blocks:
+    for kind, level, text, _seq in use_blocks:
         if kind == "h":
             doc.title = doc.title or text
             doc.heading(text, level)

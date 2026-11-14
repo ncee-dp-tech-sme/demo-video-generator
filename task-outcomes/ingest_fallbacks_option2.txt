@@ -1,0 +1,44 @@
+PROMPT: do option 2
+(Task text: make tools/ingest.py get the full article text of JavaScript-heavy pages such as IBM Community (HigherLogic) without a headless browser and without new dependencies, by finding the server-delivered content in another form. Steps A investigate, B implement, C tests/validation, D release 2.2.2 only if the real page works. No git commit/push.)
+DATE: Sat Nov 14 22:52:04 CET 2026
+
+RESULT IN ONE LINE
+The page was never JavaScript-rendered. The full article is in the static HTML. The bug was the container choice in ingest.py. Fixed in 2.2.2 without any extra request or fallback; real page: 31 -> 1,869 words, no warning.
+
+STEP A - EVIDENCE (page fetched with ingest.fetch_url, 195,460 chars, saved in the Bob temp dir)
+Candidate                          Found?  Notes
+JSON-LD (application/ld+json)      no      0 occurrences
+<noscript>                         no      0 occurrences
+<link rel=alternate> (rss/atom)    no      0 occurrences; no print/amp variant linked
+og:/twitter: meta                  yes     og:title, og:description, name=description only (blurb, ~50 words); no body
+Embedded JSON state in <script>    no      scripts are libs/loaders/config; none contains article sentences
+Static HTML body (server-rendered) YES     "Your audit team needs a trail..." at offset 151,492; headings (Introduction, Architecture Overview, ... Resources) are plain <h2>/<h3>; text in <p>, <pre>, tables
+=> Full text complete in static HTML: ~1,869 words in div.row.margin-top-large > div.col-md-12.
+Root cause (debug of the node tree): parse_html preferred containers whose class/id matches CONTAINER_HINTS. The only hinted node with text was the group-blurb widget <div class="Content"> (31 words). The article container has classes "row margin-top-large"/"col-md-12" (no hint) so it was never considered. Second flaw: blocks of a node were listed before the blocks of nested tables, so tables moved to the end of the text.
+Because no alternative form is needed, the ordered fallbacks (JSON-LD, embedded JSON, noscript, feed) were NOT implemented: nothing in Step A worked as a fallback, they would only add attack surface and extra requests.
+
+STEP B - WHAT WAS IMPLEMENTED (dist/tools/ingest.py, surgical)
+1. Hinted containers are ignored when the best hinted node holds < 50% of the words of the best node on the page.
+2. Blocks carry a document-order number and are sorted, so nested tables stay in place.
+No network code touched: https-only, public-IP/SSRF check, redirect re-validation, size limit, timeout, no cookies, UNTRUSTED marker (untrusted_content true + header comment) all unchanged. No extra requests.
+
+STEP C - TESTS AND REAL PAGE
+Tests added (dist/tests/test_tools.py, no network): small hinted widget does not hide article; substantial hinted container is still preferred; nested table keeps document order. Existing guard tests (URL rules, private addresses, localhost, oversize) unchanged and passing. Fallback-specific negative tests (other host, private link, oversize feed, request limit) do not apply because no fallback/extra request exists.
+Suite: cd dist && ../.venv/bin/python -m unittest discover -s tests -> Ran 43 tests, OK (was 40). tools/skills.py verify -> ok, 11 skills, no problems.
+Real re-ingest -> narratives/guardium-reingest-check-2/guardium-reingest-2/ (source.json, source.txt):
+- words 1,869 (reference blog_source.md: 1,900 whitespace tokens incl. markdown), warnings [], untrusted_content true
+- 16 sections; headings match reference except: the title line as H1 (it is the document title in source.txt) and "Step-by-Step Installation" (an H2 directly followed by an H3 has no paragraphs, so Doc.sections() drops it; its H3 steps 1-6 are present). Pre-existing behaviour, not changed.
+- 5-gram word overlap: 88.6% of the reference is in the new text; 84.3% of the new text is in the reference. Differences checked: the saved copy was hand-converted (bullets, backticks, table to markdown, "->" diagram), and the live page text differs slightly (e.g. "issues workforce" vs "issues across workforce", table cells now separate lines). No missing section or paragraph found.
+- Noise: no cookie banner, nav, share links, comments, like/permalink or copyright text. Trailing "Tags:" line and the author's Disclaimer are real page content. Table cells appear one cell per paragraph (less readable than markdown tables).
+
+STEP D - RELEASE 2.2.2
+- dist/VERSION 2.2.2; dist/README.md updated (version line, zip names, 43 tests, 2.2.2 change note), copied identically to README.md and docs/README.md
+- releases/demo-narrative-builder-2.2.2.zip (72 files, built from dist/ without .DS_Store, __pycache__, *.pyc, .gitignore, .env, narratives; .env.example taken unchanged from the 2.2.1 zip); 2.2.1 zip deleted
+- releases/SHA256SUMS: 6bc93cdd5d270fc3b66064e625ddf200f3cfdaec7e3d9dff1cc74dee1a1efa82  demo-narrative-builder-2.2.2.zip ; shasum -a 256 -c -> OK
+- git status (nothing committed/pushed): M README.md, M dist/README.md, M dist/VERSION, M dist/tests/test_tools.py, M dist/tools/ingest.py, M docs/README.md, M releases/SHA256SUMS, D releases/demo-narrative-builder-2.2.1.zip, ?? releases/demo-narrative-builder-2.2.2.zip, ?? task-outcomes/git_sync_and_reingest_check.txt, ?? task-outcomes/ingest_fallbacks_option2.txt. narratives/guardium-reingest-check-2/ is not listed (ignored by git).
+
+REMAINING LIMITS
+- Heuristic extraction: another CMS whose article has a hinted wrapper holding >= 50% of the text but not the article could still pick a wrong container.
+- Pages that truly render text only in JavaScript (SPA) are still not supported; the 'Only N words' warning remains. Options then: saved copy/PDF, or a headless browser as a separate decision.
+- Headings without own paragraphs are dropped; tables come out as one paragraph per cell.
+- Scratch/evidence scripts and page.html are only in the Bob temp dir.
