@@ -14,7 +14,7 @@ This repository holds two parts that work together:
 The narrative method is the one used for the two demo scripts: intake, source facts, section map,
 `| TIMING | VISUAL | VO |` table, production plan, explicit approval, video production, outcome record.
 
-Repository: <https://github.com/ncee-dp-tech-sme/demo-video-generator> (private, organisation members only).
+Repository: <https://github.com/ncee-dp-tech-sme/demo-video-generator> 
 Package version 2.0.0 (skill system; see the change notes in section 13).
 
 ## Contents
