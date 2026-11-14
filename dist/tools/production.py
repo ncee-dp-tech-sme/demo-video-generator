@@ -10,6 +10,8 @@
 #
 # Change log
 # Sat 14 Nov 2026 19:28 CET - Initial version: gate check, prerequisites, audio/still/sheet/video stages.
+# Sat 14 Nov 2026 21:09 CET - Pipeline files are bundled in pipeline/, which is the default when DEMOBUILDER_DIR is unset;
+#                             default Python falls back to the installer's .venv.
 
 import argparse
 import hashlib
@@ -27,25 +29,27 @@ import approval
 import common as C
 import validate_script as V
 
-PIPELINE_DIR = C.HOME / "pipeline"
+PIPELINE_DIR = C.PIPELINE_DIR
 CUSTOM_NAME = re.compile(r"^build_[A-Za-z0-9_]+\.py$")
 FONT = Path("/System/Library/Fonts/HelveticaNeue.ttc")
 STAGE_TIMEOUT = {"audio": 1800, "still": 300, "sheet": 900, "video": 7200}
 ROW = re.compile(r"^\|\s*(\d+):(\d+)\s*[–-]\s*(\d+):(\d+)", re.M)
 
 
-# Folder of the Demobuilder pipeline from .env - Sat 14 Nov 2026 19:28 CET
+# Folder of the Demobuilder pipeline from .env; defaults to the bundled pipeline/ folder - Sat 14 Nov 2026 21:09 CET
 def demobuilder_dir():
-    return Path(C.DEMOBUILDER_DIR).expanduser().resolve() if C.DEMOBUILDER_DIR else None
+    return Path(C.DEMOBUILDER_DIR).expanduser().resolve()
 
 
-# Interpreter that has pillow, numpy and imageio-ffmpeg - Sat 14 Nov 2026 19:28 CET
+# Interpreter that has pillow, numpy and imageio-ffmpeg - Sat 14 Nov 2026 21:09 CET
 def pipeline_python():
     if C.PIPELINE_PYTHON:
         return C.PIPELINE_PYTHON
-    demo = demobuilder_dir()
-    cand = demo / ".venv" / "bin" / "python" if demo else None
-    return str(cand) if cand and cand.is_file() else sys.executable
+    for base in (demobuilder_dir(), C.HOME):          # pipeline folder venv, then the installer's venv
+        cand = base / ".venv" / "bin" / "python"
+        if cand.is_file():
+            return str(cand)
+    return sys.executable
 
 
 # Check the approval gate, the script and the machine; returns a report dict - Sat 14 Nov 2026 19:28 CET
@@ -59,8 +63,8 @@ def check(script):
     problems += ["script: " + e for e in val["errors"]]
 
     demo = demobuilder_dir()
-    if not demo or not demo.is_dir():
-        problems.append("DEMOBUILDER_DIR is not set to the Demobuilder pipeline folder (see .env)")
+    if not demo.is_dir():
+        problems.append(f"DEMOBUILDER_DIR is not a folder: {demo} (clear it in .env to use the bundled pipeline/)")
     else:
         problems += [f"pipeline file missing: {demo / n}" for n in ("demo_common.py", "build_audio.py", "build_video.py")
                      if not (demo / n).is_file()]
@@ -76,7 +80,7 @@ def check(script):
     except (OSError, subprocess.SubprocessError):
         problems.append(f"cannot run pipeline python {py}")
     return {"ok": not problems, "script": script.name, "approval": appr, "pipeline_python": py,
-            "demobuilder_dir": str(demo or ""), "problems": problems, "warnings": val["warnings"]}
+            "demobuilder_dir": str(demo), "problems": problems, "warnings": val["warnings"]}
 
 
 # sha256 and size of an output file - Sat 14 Nov 2026 19:28 CET
@@ -193,7 +197,7 @@ def main(argv=None):
         print("Pass both --custom-audio and --custom-video, or neither", file=sys.stderr)
         return 2
     for name in (args.custom_audio, args.custom_video):
-        if name and (not CUSTOM_NAME.match(name) or not (demobuilder_dir() or Path(".")).joinpath(name).is_file()):
+        if name and (not CUSTOM_NAME.match(name) or not demobuilder_dir().joinpath(name).is_file()):
             print("Custom script must be build_<name>.py inside DEMOBUILDER_DIR", file=sys.stderr)
             return 2
     rec = run(path, args)

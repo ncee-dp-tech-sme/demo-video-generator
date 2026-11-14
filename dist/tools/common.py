@@ -4,6 +4,7 @@
 # Sat 14 Nov 2026 19:14 CET - Initial version: .env loading, JSON logging, slug and word-count helpers.
 # Sat 14 Nov 2026 19:14 CET - JsonFormatter so third-party log lines (pypdf) are valid JSON too.
 # Sat 14 Nov 2026 19:28 CET - Step 9 settings: DEMOBUILDER_DIR, PIPELINE_PYTHON, VOICE, FPS.
+# Sat 14 Nov 2026 21:09 CET - DEMOBUILDER_DIR defaults to the bundled pipeline/ folder when .env does not set it.
 
 import json
 import logging
@@ -37,7 +38,8 @@ USER_AGENT = os.environ.get("INGEST_USER_AGENT", "DemoNarrativeBuilder/1.0")
 MIN_WORDS_WARN = _int("MIN_WORDS_WARN", 150, 0)
 SPEECH_WPM = _int("SPEECH_WPM", 150, 60)
 RUNTIME_TOLERANCE = _int("RUNTIME_TOLERANCE_SECONDS", 10, 0)
-DEMOBUILDER_DIR = os.environ.get("DEMOBUILDER_DIR", "")   # folder with demo_common.py, build_audio.py, build_video.py
+PIPELINE_DIR = HOME / "pipeline"                          # bundled pipeline: demo_common.py, build_audio.py, build_video.py, ...
+DEMOBUILDER_DIR = os.environ.get("DEMOBUILDER_DIR", "").strip() or str(PIPELINE_DIR)   # empty or unset = bundled pipeline/
 PIPELINE_PYTHON = os.environ.get("PIPELINE_PYTHON", "")   # Python with pillow, numpy, imageio-ffmpeg
 VOICE = os.environ.get("VOICE", "Daniel")                 # macOS `say` voice
 FPS = _int("FPS", 24, 1)

@@ -21,7 +21,8 @@ missing and offer step 8 (or earlier steps); never produce from an unapproved or
    "{{DNB_PYTHON}}" "{{DNB_HOME}}/tools/production.py" check "<script path>"
    ```
 
-   It verifies the approval hash, validates the script and checks `DEMOBUILDER_DIR` (in `{{DNB_HOME}}/.env`), macOS `say`,
+   It verifies the approval hash, validates the script and checks the pipeline folder (`DEMOBUILDER_DIR` in `{{DNB_HOME}}/.env`;
+   empty or no `.env` = `{{DNB_HOME}}/pipeline`), macOS `say`,
    the font and the pipeline Python (pillow, numpy, imageio-ffmpeg). Each problem is listed; relay it and stop.
    Do not work around the gate with other tools.
 2. **Pre-run summary and risk warning, then confirmation.** Say what will happen: the voice-over is
@@ -43,7 +44,8 @@ missing and offer step 8 (or earlier steps); never produce from an unapproved or
    `<name>.srt` to `production/output/`. (`--stage all` runs audio and video in one go.)
 6. **Engines.** Default is the generic storyboard renderer (text cards from the VISUAL column plus burned-in
    captions). For story-specific scenes (for example the IBM Bob client demo) pass
-   `--custom-audio build_<x>_audio.py --custom-video build_<x>_video.py`; both files must already exist in `DEMOBUILDER_DIR`.
+   `--custom-audio build_<x>_audio.py --custom-video build_<x>_video.py`; both files must already exist in the pipeline
+   folder (`{{DNB_HOME}}/pipeline` by default, which contains `build_bob_audio.py` and `build_bob_video.py`).
    This skill does not write renderer code.
 7. **Record.** `production.json` lists stages, outputs with size and sha256, runtime and extended scenes.
    Report the file paths, runtime against target and any warnings. Mark the visuals honestly: generic cards are

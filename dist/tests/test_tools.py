@@ -316,6 +316,13 @@ class ApprovalAndProductionTests(unittest.TestCase):
         self.assertEqual(run_cli(production.main, base + ["--confirmed", "--custom-audio", "../evil.py",
                                                           "--custom-video", "build_b.py"])[0], 2)
 
+    def test_pipeline_folder_is_bundled_and_is_the_default(self):
+        for name in ("demo_common.py", "build_audio.py", "build_video.py", "build_bob_audio.py", "build_bob_video.py",
+                     "bob_ui.py", "bob_scenes_a.py", "bob_scenes_b.py", "generic_audio.py", "generic_video.py"):
+            self.assertTrue((ROOT / "pipeline" / name).is_file(), name)
+        self.assertEqual(production.demobuilder_dir(), (ROOT / "pipeline").resolve())
+        self.assertEqual(Path(production.C.DEMOBUILDER_DIR), ROOT / "pipeline")
+
     def test_run_is_blocked_without_approval(self):
         args = production.argparse.Namespace(stage="audio", custom_audio=None, custom_video=None, at=5.0)
         res = production.run(self.script, args)

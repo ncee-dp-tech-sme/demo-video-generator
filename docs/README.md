@@ -15,7 +15,7 @@ The narrative method is the one used for the two demo scripts: intake, source fa
 `| TIMING | VISUAL | VO |` table, production plan, explicit approval, video production, outcome record.
 
 Repository: <https://github.com/ncee-dp-tech-sme/demo-video-generator>
-Package version 2.1.0 (mode installed as a plugin; see the change notes in section 13).
+Package version 2.1.1 (pipeline files bundled in the zip; see the change notes in section 13).
 
 ## Contents
 
@@ -41,12 +41,13 @@ Package version 2.1.0 (mode installed as a plugin; see the change notes in secti
 
 | Path | Purpose |
 |---|---|
-| `demo_common.py`, `build_audio.py`, `build_video.py` | Shared parser/timeline and the HexStrike audio and video stages |
-| `build_bob_audio.py`, `build_bob_video.py`, `bob_ui.py`, `bob_scenes_a.py`, `bob_scenes_b.py` | IBM Bob client demo stages and scenes |
+| `dist/pipeline/demo_common.py`, `build_audio.py`, `build_video.py` | Shared parser/timeline and the HexStrike audio and video stages |
+| `dist/pipeline/build_bob_audio.py`, `build_bob_video.py`, `bob_ui.py`, `bob_scenes_a.py`, `bob_scenes_b.py` | IBM Bob client demo stages and scenes |
+| `dist/pipeline/generic_audio.py`, `generic_video.py` | Default renderer for step 9 |
 | `HexStrike_AV_script_v1.md`, `IBM_Bob_Client_Demo_script_v1.md`, `IBM_Bob_Client_Demo_script_v2.md` | Script tables |
 | `requirements.txt`, `.env.example` | Pipeline dependencies and settings (`VOICE`, `SPEECH_RATE`, `FPS`, `LOG_LEVEL`, `SCRIPT_FILE`, `BUILD_DIR`) |
-| `dist/` | Sources of the Demo Narrative Builder package (layout in 6.1) |
-| `releases/` | The ready-to-install zip `demo-narrative-builder-2.1.0.zip` and its `SHA256SUMS` |
+| `dist/` | Sources of the Demo Narrative Builder package, including the whole video pipeline in `dist/pipeline/` (layout in 6.1) |
+| `releases/` | The ready-to-install zip `demo-narrative-builder-2.1.1.zip` and its `SHA256SUMS` |
 | `docs/README.md` | Copy of this document (kept identical to the root `README.md`) |
 | `hexstrikesdlc/`, `task-outcomes/` | Source facts and task records |
 
@@ -88,7 +89,7 @@ Step 9 of the Demo Narrative Builder runs this pipeline. How to run it directly:
 | Tool | `tools/skills.py` | Skill menu (`list`, `show`), inputs check (`check`), progress (`status`), consistency check (`verify`) |
 | Tool | `tools/approval.py` | Records the approval bound to the script's sha256 (step 8) and verifies it (step 9) |
 | Tool | `tools/production.py` | Step 9 gate and prerequisite check, staged audio, review frames and render |
-| Pipeline | `pipeline/generic_audio.py`, `generic_video.py` | Default renderer for step 9 (storyboard cards, captions, voice-over), on top of the Demobuilder pipeline |
+| Pipeline | `pipeline/` | Complete video pipeline, shipped in the zip and used by default for step 9: `demo_common.py`, `build_audio.py`, `build_video.py`, the IBM Bob renderers and the default `generic_audio.py`, `generic_video.py` (storyboard cards, captions, voice-over) |
 | Templates | `templates/` | Script, production plan, fact sheet, follow-ups and outcome record |
 | Installer | `install.py` / `install.sh` | Install, backup, rollback (`--uninstall`) |
 
@@ -142,14 +143,14 @@ Install the Demo Narrative Builder from the release zip (details and alternative
 
 ```bash
 # 1. download the zip and its checksum (needs `gh auth login`; or use the browser, see 4.1)
-for f in demo-narrative-builder-2.1.0.zip SHA256SUMS; do
+for f in demo-narrative-builder-2.1.1.zip SHA256SUMS; do
   gh api -H "Accept: application/vnd.github.raw" \
     "repos/ncee-dp-tech-sme/demo-video-generator/contents/releases/$f" > "$f"
 done
-shasum -a 256 -c SHA256SUMS                      # must print: demo-narrative-builder-2.1.0.zip: OK
+shasum -a 256 -c SHA256SUMS                      # must print: demo-narrative-builder-2.1.1.zip: OK
 
 # 2. unpack, preview, install
-unzip demo-narrative-builder-2.1.0.zip && cd demo-narrative-builder
+unzip demo-narrative-builder-2.1.1.zip && cd demo-narrative-builder
 ./install.sh --dry-run
 ./install.sh --scope workspace --target /path/to/your/workspace      # asks for confirmation
 ```
@@ -162,7 +163,7 @@ Create a 3-minute client video narrative from https://example.com/blog/my-post
 
 or `from /path/to/whitepaper.pdf`, `from notes.txt`, `from proposal.docx`.
 
-For step 9 (video production) also clone this repository and pass its path with `--demobuilder-dir` (see 4.3).
+Step 9 (video production) works out of the box: the pipeline files are in the installed `pipeline/` folder, the default when `.env` does not set `DEMOBUILDER_DIR` (see 4.3).
 To run one skill only, say so: `Run step 6 for my-post`, `Make the video for my-post` (step 9), `Show the skills`.
 
 Roll back at any time: `./install.sh --uninstall --scope workspace --target /path/to/your/workspace`.
@@ -190,6 +191,9 @@ No other system packages are needed for steps 1 to 8. `pdftotext`, `pandoc`, `ff
 | `pypdf` | 7.1.0 | PDF text extraction | BSD-3-Clause | none known |
 | `defusedxml` | 0.7.1 | Safe parsing of DOCX XML (blocks entity attacks) | PSF | none known |
 | `python-dotenv` | 1.2.4 | Loading `.env` settings | BSD-3-Clause | none known |
+| `pillow` | 13.0.0 | Step 9: frame rendering | MIT-CMU (HPND) | none known |
+| `numpy` | 2.5.4 | Step 9: audio mixing | BSD-3-Clause | none known |
+| `imageio-ffmpeg` | 0.8.1 | Step 9: bundled ffmpeg | BSD-2-Clause | none known |
 
 Everything else (`urllib`, `ssl`, `html.parser`, `zipfile`, `ipaddress`, `argparse`, `unittest`) is the
 Python standard library. Re-check the pins before every release.
@@ -203,7 +207,7 @@ Python standard library. Re-check the pins before every release.
 | Output folder | `OUTPUT_DIR` | Default `narratives/` inside the workspace |
 | Limits | `INGEST_*` | Timeout 20 s, 10 MiB, 300 PDF pages, 5 redirects |
 | Log level | `LOG_LEVEL` | DEBUG, INFO, WARN, ERROR; default INFO |
-| Step 9 pipeline | `DEMOBUILDER_DIR`, `PIPELINE_PYTHON`, `VOICE`, `FPS` | Folder with the Demobuilder pipeline, its Python, `say` voice, frame rate. `install.py --demobuilder-dir DIR` fills `DEMOBUILDER_DIR` |
+| Step 9 pipeline | `DEMOBUILDER_DIR`, `PIPELINE_PYTHON`, `VOICE`, `FPS` | Folder with the pipeline files, its Python, `say` voice, frame rate. **Default when `DEMOBUILDER_DIR` is empty or there is no `.env` file: the `pipeline/` folder of the installation.** `install.py --demobuilder-dir DIR` sets another folder |
 
 All settings are in `dist/.env.example` (`.env.example` in the zip). Real environment variables override the file.
 
@@ -213,7 +217,7 @@ All settings are in `dist/.env.example` (`.env.example` in the zip). Real enviro
 |---|---|
 | File system | Write access to `<workspace>/.bob/` (workspace scope) or `~/.bob/` (global scope), and to `narratives/` and `task-outcomes/` in the workspace |
 | Command execution | Bob must be allowed to run commands (the mode has the `execute` group). Approve the ingest and validate commands when asked |
-| Network at install | HTTPS to the Python package index (`pypi.org`, `files.pythonhosted.org`) to install the three pinned packages |
+| Network at install | HTTPS to the Python package index (`pypi.org`, `files.pythonhosted.org`) to install the six pinned packages |
 | Network at run time | Outbound HTTPS on port 443, only when the source is a URL. No proxy is used (proxy variables are ignored by design) |
 | Sandboxed environments | If your Bob sandbox restricts network or file writes, allow the blog host for ingest and the folders above. Sandboxes may also hide `.env*` files from tools |
 | Privileges | No administrator or root rights are needed. Do not run the installer with `sudo` |
@@ -225,8 +229,8 @@ Needed only for step 9. Steps 1 to 8 work without them.
 | Requirement | Detail | Check |
 |---|---|---|
 | macOS | The `say` command synthesises the voice-over; it may not run in a restricted sandbox (approve it when asked) | `say -v Daniel "test"` |
-| Demobuilder pipeline folder | Contains `demo_common.py`, `build_audio.py`, `build_video.py` (this repository's root; clone it, see 4.3); set `DEMOBUILDER_DIR` | `tools/production.py check <script>` |
-| Pipeline Python | Packages `pillow`, `numpy`, `imageio-ffmpeg` (bundles ffmpeg) and `python-dotenv`; tested with Pillow 13.0.0, NumPy 2.5.4, imageio-ffmpeg 0.8.1. Set `PIPELINE_PYTHON` or use `<DEMOBUILDER_DIR>/.venv` | `production.py check` |
+| Demobuilder pipeline folder | Contains `demo_common.py`, `build_audio.py`, `build_video.py`. Shipped in the zip as `pipeline/` and used by default; set `DEMOBUILDER_DIR` only to use another folder (see 4.3) | `tools/production.py check <script>` |
+| Pipeline Python | Packages `pillow`, `numpy`, `imageio-ffmpeg` (bundles ffmpeg) and `python-dotenv`, installed into the installer's `.venv` from `requirements.txt`; tested with Pillow 13.0.0, NumPy 2.5.4, imageio-ffmpeg 0.8.1. Order: `PIPELINE_PYTHON`, `<DEMOBUILDER_DIR>/.venv`, the installer's `.venv`, the running Python | `production.py check` |
 | System font | `/System/Library/Fonts/HelveticaNeue.ttc` (macOS) | `production.py check` |
 | CPU time | Rendering uses all cores but one; minutes for a 3 to 7 minute video | - |
 
@@ -236,38 +240,39 @@ Needed only for step 9. Steps 1 to 8 work without them.
 
 ### 4.1 Download the release zip
 
-`releases/demo-narrative-builder-2.1.0.zip` contains only the files the installer needs: no caches, `.DS_Store`,
+`releases/demo-narrative-builder-2.1.1.zip` contains only the files the installer needs: no caches, `.DS_Store`,
 `.env` or narratives. It unpacks to a folder `demo-narrative-builder/`. 
 
 - **Browser:** open <https://github.com/ncee-dp-tech-sme/demo-video-generator>, go to `releases/`, open
-  `demo-narrative-builder-2.1.0.zip` and `SHA256SUMS`, and click **Download raw file** for each.
+  `demo-narrative-builder-2.1.1.zip` and `SHA256SUMS`, and click **Download raw file** for each.
 - **GitHub CLI** (after `gh auth login`):
   ```bash
-  for f in demo-narrative-builder-2.1.0.zip SHA256SUMS; do
+  for f in demo-narrative-builder-2.1.1.zip SHA256SUMS; do
     gh api -H "Accept: application/vnd.github.raw" \
       "repos/ncee-dp-tech-sme/demo-video-generator/contents/releases/$f" > "$f"
   done
   ```
 - **Git:** `git clone https://github.com/ncee-dp-tech-sme/demo-video-generator.git` gives you the zip in `releases/`
-  and also the video pipeline needed for step 9.
+  and the sources in `dist/`.
 
 Verify the download (both files in the same folder):
 
 ```bash
-shasum -a 256 -c SHA256SUMS        # demo-narrative-builder-2.1.0.zip: OK
+shasum -a 256 -c SHA256SUMS        # demo-narrative-builder-2.1.1.zip: OK
 ```
 
 ### 4.2 Automated install (recommended)
 
 ```bash
-unzip demo-narrative-builder-2.1.0.zip && cd demo-narrative-builder
+unzip demo-narrative-builder-2.1.1.zip && cd demo-narrative-builder
 ./install.sh --dry-run                                   # show what would happen, changes nothing
 ./install.sh --scope workspace --target /path/to/ws      # project-only install
 ./install.sh --scope global                              # all workspaces (~/.bob)
 ```
 
-Options: `--yes` (no prompt), `--no-venv` (use the current Python, for CI), `--demobuilder-dir DIR` (step 9 pipeline
-folder, written to `.env`), `--uninstall` (rollback). Run it from a clone with `cd dist` instead of `cd demo-narrative-builder`.
+Options: `--yes` (no prompt), `--no-venv` (use the current Python, for CI), `--demobuilder-dir DIR` (use another step 9
+pipeline folder than the bundled `pipeline/`, written to `.env`), `--uninstall` (rollback). Run it from a clone with
+`cd dist` instead of `cd demo-narrative-builder`.
 
 What the installer does:
 
@@ -288,18 +293,11 @@ Open a **new** Bob task afterwards; skills load at the next task and the mode ap
 
 ### 4.3 Enable step 9 (video production)
 
-Step 9 renders with the pipeline files `demo_common.py`, `build_audio.py` and `build_video.py` from this repository
-(the zip does not contain them). Clone it once and prepare its Python environment:
-
-```bash
-git clone https://github.com/ncee-dp-tech-sme/demo-video-generator.git
-cd demo-video-generator
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-cp .env.example .env            # optional: VOICE, SPEECH_RATE, FPS, LOG_LEVEL
-```
-
-Then either install with `--demobuilder-dir /path/to/demo-video-generator` (see 4.2), or set `DEMOBUILDER_DIR` in
-`<root>/.bob/demo-narrative-builder/.env` afterwards. Prerequisites: 3.5.
+Nothing to configure. The zip contains the pipeline files (`demo_common.py`, `build_audio.py`, `build_video.py`, the IBM
+Bob renderers and the generic renderer) in `pipeline/`, and the installer's `.venv` has the packages they need.
+Step 9 uses `<root>/.bob/demo-narrative-builder/pipeline/` whenever `DEMOBUILDER_DIR` is empty in `.env` or no `.env`
+file exists. To use your own copy of the pipeline instead, install with `--demobuilder-dir /path/to/folder` (see 4.2) or
+set `DEMOBUILDER_DIR` in `<root>/.bob/demo-narrative-builder/.env` afterwards. Prerequisites: 3.5.
 
 ### 4.4 Manual install
 
@@ -317,7 +315,7 @@ Then either install with `--demobuilder-dir /path/to/demo-video-generator` (see 
 
 ```bash
 cd <root>/.bob/demo-narrative-builder
-.venv/bin/python -m unittest discover -s tests          # 31 tests, all OK
+.venv/bin/python -m unittest discover -s tests          # 32 tests, all OK
 .venv/bin/python tools/skills.py verify                 # registry, 11 skills, mode and question bank consistent
 .venv/bin/python tools/validate_script.py examples/sample_script_v1.md     # PASS
 .venv/bin/python tools/ingest.py examples/sample_source.txt --out /tmp/dnb-check
@@ -454,7 +452,7 @@ Any step skill can also be entered directly; `skills.py check` verifies the file
 ```text
 dist/                               (demo-narrative-builder/ in the zip)
   README.md                         this document (identical copy of the repository root README.md)
-  VERSION                           2.1.0
+  VERSION                           2.1.1
   registry.json                     skill catalog: steps 1-9, support and orchestrator skills, files in and out
   requirements.txt                  pinned Python dependencies
   .env.example                      all runtime settings with comments
@@ -487,7 +485,10 @@ dist/                               (demo-narrative-builder/ in the zip)
     skills.py                       skill menu, inputs check, status, consistency verify
     approval.py                     sha256-bound approval record and verification
     production.py                   step 9 gate, prerequisites, staged production
-  pipeline/
+  pipeline/                         default DEMOBUILDER_DIR
+    demo_common.py                  script parser, timeline and cue helpers
+    build_audio.py  build_video.py  HexStrike audio and video stages
+    build_bob_audio.py  build_bob_video.py  bob_ui.py  bob_scenes_a.py  bob_scenes_b.py   IBM Bob client demo renderer
     generic_audio.py                step 9 default audio stage (say, fit, mix)
     generic_video.py                step 9 default video stage (storyboard cards, captions, ffmpeg)
   templates/
@@ -498,7 +499,7 @@ dist/                               (demo-narrative-builder/ in the zip)
   examples/
     sample_source.txt  sample_script_v1.md
   tests/
-    test_tools.py                   31 unit and security tests
+    test_tools.py                   32 unit and security tests
 ```
 
 After installation the same content lives under `<root>/.bob/demo-narrative-builder/` (tools, templates,
@@ -539,7 +540,7 @@ references, examples, tests, `.venv`, `.env`), with skills and rules placed wher
 | Path safety | Output folder name is a slug of letters, digits and dashes; `../` cannot escape the output folder |
 | Secrets and privacy | No secrets in files; query strings are not stored; logs hold no source text; `.env` is mode 600 and git-ignored |
 | Errors | Generic messages to the user; details only with `LOG_LEVEL=DEBUG` |
-| Supply chain | Three pinned, vulnerability-checked, maintained packages |
+| Supply chain | Six pinned, vulnerability-checked, maintained packages |
 | Approval gate | Approval is stored with the sha256 of the script; edited scripts fail verification and cannot be produced |
 | Production | Commands built as argument lists (no shell); custom renderers limited to `build_<name>.py` inside `DEMOBUILDER_DIR`; output paths contained in the narrative folder; mandatory `--confirmed` |
 | Installer | Confirmation prompt, no deletions, backups, manifest-based rollback, non-root |
@@ -553,13 +554,13 @@ cd <root>/.bob/demo-narrative-builder      # or dist/ with the dependencies inst
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-31 tests cover TXT, DOCX (including an entity-expansion attack), PDF, HTML extraction, corrupt and oversize
+32 tests cover TXT, DOCX (including an entity-expansion attack), PDF, HTML extraction, corrupt and oversize
 files, slug traversal, URL rules, private address blocking, the localhost block, the validator (pass, timing gap,
 voice-over overrun, missing follow-ups or gate, placeholders, runtime mismatch, template not passing, production plan
 required), the skill system (nine contiguous steps with step 9 = video production, registry, SKILL.md files, mode,
 question bank and README consistent, step status and inputs check), the approval record (status line, hash binding,
 edit invalidates approval, open plan refused) and the step 9 gate (blocked without approval, `--confirmed` required,
-unsafe custom renderer names rejected).
+unsafe custom renderer names rejected, bundled `pipeline/` present and used as the default).
 The tests need no network access. A live fetch of a public HTTPS page was also verified manually.
 
 ---
@@ -587,7 +588,7 @@ $PY tools/production.py run narratives/my-post/my-post_script_v1.md --stage vide
 | Audio | macOS `say` per scene, rate raised up to 235 wpm to fit the window, otherwise the scene borrows time from the next one (`scenes_extended` in `production.json`) |
 | Video | 1920x1080, 24 fps (`FPS`), burned-in captions, `.srt`, H.264 and AAC via the ffmpeg in `imageio-ffmpeg` |
 | Default renderer | Storyboard cards built from the VISUAL column (`SCENE`, `ON-SCREEN`, `DEMO`), labelled "placeholder visuals" |
-| Story-specific renderer | `--custom-audio build_x_audio.py --custom-video build_x_video.py`, files that already exist in `DEMOBUILDER_DIR` (for example `build_bob_audio.py`, `build_bob_video.py` for the IBM Bob client demo, which write to `<DEMOBUILDER_DIR>/output/`) |
+| Story-specific renderer | `--custom-audio build_x_audio.py --custom-video build_x_video.py`, files that already exist in `DEMOBUILDER_DIR` (by default `pipeline/`, which ships `build_bob_audio.py` and `build_bob_video.py` for the IBM Bob client demo; they write to `<DEMOBUILDER_DIR>/output/`) |
 | Output | `narratives/<slug>/production/{build,review,output}/` and `narratives/<slug>/production.json` |
 
 Honest limits: the generic renderer produces text cards, not product footage; high-fidelity scenes need a
@@ -598,8 +599,9 @@ the sandbox to allow `say`.
 
 ## 10. Building the demo videos directly
 
-The two demo videos are rendered by the pipeline in the repository root. This is independent of the narrative
-builder; step 9 uses the same stages.
+The two demo videos are rendered by the pipeline in `dist/pipeline/` (`pipeline/` in the zip). This is independent of
+the narrative builder; step 9 uses the same stages. Run the commands from the repository root: relative `SCRIPT_FILE`,
+`BUILD_DIR` and `output/` resolve against the current folder.
 
 ### 10.1 Setup
 
@@ -611,19 +613,19 @@ cp .env.example .env            # optional: VOICE, SPEECH_RATE, FPS, LOG_LEVEL
 ### 10.2 Run: HexStrike video
 
 ```bash
-.venv/bin/python build_audio.py     # needs macOS `say` (will not run in a restricted sandbox)
-.venv/bin/python build_video.py render
-.venv/bin/python build_video.py still 75 build/preview.png
+.venv/bin/python dist/pipeline/build_audio.py     # needs macOS `say` (will not run in a restricted sandbox)
+.venv/bin/python dist/pipeline/build_video.py render
+.venv/bin/python dist/pipeline/build_video.py still 75 build/preview.png
 ```
 
 ### 10.3 Run: IBM Bob client demo
 
 ```bash
 export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_RATE=150
-.venv/bin/python build_bob_audio.py          # needs macOS `say`
-.venv/bin/python build_bob_video.py render   # -> output/IBM_Bob_Client_Demo.mp4 + .srt
-.venv/bin/python build_bob_video.py still 150 build/bob/preview.png
-.venv/bin/python build_bob_video.py sheet build/bob/sheet   # 3 review frames per scene
+.venv/bin/python dist/pipeline/build_bob_audio.py          # needs macOS `say`
+.venv/bin/python dist/pipeline/build_bob_video.py render   # -> output/IBM_Bob_Client_Demo.mp4 + .srt
+.venv/bin/python dist/pipeline/build_bob_video.py still 150 build/bob/preview.png
+.venv/bin/python dist/pipeline/build_bob_video.py sheet build/bob/sheet   # 3 review frames per scene
 ```
 
 `SCRIPT_FILE` and `BUILD_DIR` can also be set in `.env` (see `.env.example`).
@@ -652,7 +654,7 @@ export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_R
 | `Already installed` | Run `--uninstall` first |
 | pip install fails | Check network access to the package index or a corporate mirror; use `PIP_INDEX_URL` |
 | Step 9 says `approval: script changed after approval` | The script was edited after step 8. Run step 8 again for the current file |
-| Step 9 says `DEMOBUILDER_DIR is not set` | Set `DEMOBUILDER_DIR` in `<root>/.bob/demo-narrative-builder/.env` to the Demobuilder folder (or reinstall with `--demobuilder-dir`) |
+| Step 9 says `DEMOBUILDER_DIR is not a folder` or `pipeline file missing` | `DEMOBUILDER_DIR` in `<root>/.bob/demo-narrative-builder/.env` points to a folder that does not exist or lacks the pipeline files. Clear the value to use the bundled `pipeline/` |
 | Step 9 says `macOS say command not found` | Voice-over synthesis needs macOS; run steps 1 to 8 only, or produce on a Mac |
 | `skills.py verify` reports problems | A skill, the registry, the mode or the question bank is out of sync; fix the named file |
 | Blog text includes menus or language lists | Some sites place navigation inside `<main>`. Review `source.txt` and tell the mode what to ignore (follow-up question in the ingest step) |
@@ -665,7 +667,7 @@ export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_R
 - DOCX headings rely on built-in Heading and Title styles; custom style names become body text.
 - PDF sections are pages, not topics; the fact-sheet step regroups them.
 - Narrative quality depends on the model driving the mode; the validator checks structure and timing, not wording.
-- Step 9 needs macOS and the Demobuilder pipeline folder; the generic renderer is a storyboard, not product footage.
+- Step 9 needs macOS; the generic renderer is a storyboard, not product footage.
 - The mode cannot create new scene renderer code (edit scope is `.md .txt .json .srt`).
 - There is no database: skill state is the set of files in `narratives/<slug>/` (see `registry.json`). A database would only be needed for multi-user tracking.
 - Windows is untested. No licence file is included; add one before external distribution.
@@ -673,6 +675,13 @@ export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_R
 ---
 
 ## 13. Change notes
+
+**2.1.1 (14 Nov 2026), pipeline bundled.** The pipeline files `demo_common.py`, `build_audio.py`, `build_video.py`,
+`build_bob_audio.py`, `build_bob_video.py`, `bob_ui.py`, `bob_scenes_a.py` and `bob_scenes_b.py` were missing from the
+2.1.0 zip. They now live in `pipeline/` (next to `generic_audio.py` and `generic_video.py`) and are shipped in the zip.
+When `DEMOBUILDER_DIR` is empty or no `.env` exists, step 9 uses this folder. `pillow`, `numpy` and `imageio-ffmpeg` are
+now pinned in `requirements.txt`, so the installer's `.venv` can run the pipeline. Relative `SCRIPT_FILE`, `BUILD_DIR`
+and `output/` resolve against the current folder. Upgrade: `install.py --uninstall`, install the new zip.
 
 **2.1.0 (14 Nov 2026), plugin install.** The installer now writes the mode as a plugin to
 `<root>/.bob/plugins/demo-narrative-builder/` (`plugin.json`, `custom_modes.yaml`, `mode/demo-narrative-builder.yaml`)

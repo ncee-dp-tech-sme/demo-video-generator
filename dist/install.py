@@ -10,6 +10,7 @@
 # Sat 14 Nov 2026 19:14 CET - Initial version: install, backup, manifest-based rollback.
 # Sat 14 Nov 2026 19:28 CET - Skill system: copy pipeline/ and registry.json, --demobuilder-dir sets DEMOBUILDER_DIR in .env.
 # Sat 14 Nov 2026 20:45 CET - Mode is installed as a plugin in <root>/.bob/plugins/<name>/ instead of custom_modes.yaml.
+# Sat 14 Nov 2026 21:09 CET - pipeline/ now holds the complete video pipeline and is the default DEMOBUILDER_DIR (help text only).
 
 import argparse
 import json
@@ -212,7 +213,7 @@ def main():
     ap = argparse.ArgumentParser(description="Install or remove the Demo Narrative Builder asset package")
     ap.add_argument("--scope", choices=["workspace", "global"], default="workspace")
     ap.add_argument("--target", default=".", help="workspace folder for --scope workspace (default: current)")
-    ap.add_argument("--demobuilder-dir", help="folder with the Demobuilder pipeline for step 9 (written to .env)")
+    ap.add_argument("--demobuilder-dir", help="use another step 9 pipeline folder than the bundled pipeline/ (written to .env)")
     ap.add_argument("--uninstall", action="store_true", help="roll back a previous installation")
     ap.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     ap.add_argument("--no-venv", action="store_true", help="skip the virtual environment (use the current Python)")

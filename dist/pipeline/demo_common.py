@@ -3,6 +3,7 @@
 # Change log
 # Sat 14 Nov 2026 17:25 CET - Initial version: script parser, TTS text fixes, timeline + cue helpers.
 # Sat 14 Nov 2026 17:58 CET - SCRIPT_FILE / BUILD_DIR env overrides (defaults unchanged); Bob TTS fixes.
+# Sat 14 Nov 2026 21:09 CET - Moved to pipeline/: relative SCRIPT_FILE, BUILD_DIR and output/ resolve against the working folder.
 
 import json
 import logging
@@ -14,10 +15,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parent
-SCRIPT_MD = ROOT / os.environ.get("SCRIPT_FILE", "HexStrike_AV_script_v1.md")
-BUILD = ROOT / os.environ.get("BUILD_DIR", "build")
-OUT = ROOT / "output"
+WORK = Path.cwd()   # absolute SCRIPT_FILE / BUILD_DIR values (set by tools/production.py) override this
+SCRIPT_MD = WORK / os.environ.get("SCRIPT_FILE", "HexStrike_AV_script_v1.md")
+BUILD = WORK / os.environ.get("BUILD_DIR", "build")
+OUT = WORK / "output"
 TIMELINE_JSON = BUILD / "timeline.json"
 
 VOICE = os.environ.get("VOICE", "Daniel")

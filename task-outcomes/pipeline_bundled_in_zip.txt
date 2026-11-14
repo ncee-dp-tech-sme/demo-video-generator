@@ -1,0 +1,15 @@
+PROMPT:
+You did not include bob_scenes_a.py bob_scenes_b.py bob_ui.py build_audio.py build_bob_audio.py build_bob_video.py build_video.py demo_common.py in the distribution zip. They are reference in skills and mode. I want them to be moved to the pipelines directory and if an user doesn't create an .env file this directory to be used as default.
+
+TIMESTAMP: Sat Nov 14 21:15 CET 2026
+
+OUTCOME (release 2.1.1)
+- git mv of the 8 files from the repository root to dist/pipeline/ (existing folder, next to generic_audio.py/generic_video.py), so they are in the zip.
+- demo_common.py: relative SCRIPT_FILE, BUILD_DIR and output/ now resolve against the working folder (was: the file's folder).
+- tools/common.py: DEMOBUILDER_DIR empty/unset (or no .env) = <install>/pipeline.
+- tools/production.py: uses that default; pipeline Python = PIPELINE_PYTHON, <DEMOBUILDER_DIR>/.venv, installer .venv, running Python.
+- requirements.txt: pillow 13.0.0, numpy 2.5.4, imageio-ffmpeg 0.8.1 pinned (OSV: no known vulnerabilities) so the installer venv can run the pipeline.
+- .env.example, install.py help, SKILL.md step 9, README (root, dist, docs copies) updated; new test for the bundled default (32 tests).
+- releases/demo-narrative-builder-2.1.1.zip + SHA256SUMS rebuilt; 2.1.0 zip removed.
+- Verified: fresh install from the zip, .env deleted, 32 tests OK, skills.py verify no problems, demobuilder_dir() = installed pipeline/, pipeline modules import in the installer venv.
+- Repo-root run commands are now: .venv/bin/python dist/pipeline/build_audio.py (run from the repository root).

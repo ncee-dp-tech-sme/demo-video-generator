@@ -2,3 +2,7 @@
 pypdf==7.1.0
 defusedxml==0.7.1
 python-dotenv==1.2.4
+# Step 9 pipeline (pipeline/ folder): rendering and ffmpeg
+pillow==13.0.0
+numpy==2.5.4
+imageio-ffmpeg==0.8.1
