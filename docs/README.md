@@ -15,7 +15,7 @@ The narrative method is the one used for the two demo scripts: intake, source fa
 `| TIMING | VISUAL | VO |` table, production plan, explicit approval, video production, outcome record.
 
 Repository: <https://github.com/ncee-dp-tech-sme/demo-video-generator>
-Package version 2.0.0 (skill system; see the change notes in section 13).
+Package version 2.1.0 (mode installed as a plugin; see the change notes in section 13).
 
 ## Contents
 
@@ -46,7 +46,7 @@ Package version 2.0.0 (skill system; see the change notes in section 13).
 | `HexStrike_AV_script_v1.md`, `IBM_Bob_Client_Demo_script_v1.md`, `IBM_Bob_Client_Demo_script_v2.md` | Script tables |
 | `requirements.txt`, `.env.example` | Pipeline dependencies and settings (`VOICE`, `SPEECH_RATE`, `FPS`, `LOG_LEVEL`, `SCRIPT_FILE`, `BUILD_DIR`) |
 | `dist/` | Sources of the Demo Narrative Builder package (layout in 6.1) |
-| `releases/` | The ready-to-install zip `demo-narrative-builder-2.0.0.zip` and its `SHA256SUMS` |
+| `releases/` | The ready-to-install zip `demo-narrative-builder-2.1.0.zip` and its `SHA256SUMS` |
 | `docs/README.md` | Copy of this document (kept identical to the root `README.md`) |
 | `hexstrikesdlc/`, `task-outcomes/` | Source facts and task records |
 
@@ -142,14 +142,14 @@ Install the Demo Narrative Builder from the release zip (details and alternative
 
 ```bash
 # 1. download the zip and its checksum (needs `gh auth login`; or use the browser, see 4.1)
-for f in demo-narrative-builder-2.0.0.zip SHA256SUMS; do
+for f in demo-narrative-builder-2.1.0.zip SHA256SUMS; do
   gh api -H "Accept: application/vnd.github.raw" \
     "repos/ncee-dp-tech-sme/demo-video-generator/contents/releases/$f" > "$f"
 done
-shasum -a 256 -c SHA256SUMS                      # must print: demo-narrative-builder-2.0.0.zip: OK
+shasum -a 256 -c SHA256SUMS                      # must print: demo-narrative-builder-2.1.0.zip: OK
 
 # 2. unpack, preview, install
-unzip demo-narrative-builder-2.0.0.zip && cd demo-narrative-builder
+unzip demo-narrative-builder-2.1.0.zip && cd demo-narrative-builder
 ./install.sh --dry-run
 ./install.sh --scope workspace --target /path/to/your/workspace      # asks for confirmation
 ```
@@ -236,14 +236,14 @@ Needed only for step 9. Steps 1 to 8 work without them.
 
 ### 4.1 Download the release zip
 
-`releases/demo-narrative-builder-2.0.0.zip` contains only the files the installer needs: no caches, `.DS_Store`,
-`.env` or narratives. It unpacks to a folder `demo-narrative-builder/`.
+`releases/demo-narrative-builder-2.1.0.zip` contains only the files the installer needs: no caches, `.DS_Store`,
+`.env` or narratives. It unpacks to a folder `demo-narrative-builder/`. 
 
 - **Browser:** open <https://github.com/ncee-dp-tech-sme/demo-video-generator>, go to `releases/`, open
-  `demo-narrative-builder-2.0.0.zip` and `SHA256SUMS`, and click **Download raw file** for each.
+  `demo-narrative-builder-2.1.0.zip` and `SHA256SUMS`, and click **Download raw file** for each.
 - **GitHub CLI** (after `gh auth login`):
   ```bash
-  for f in demo-narrative-builder-2.0.0.zip SHA256SUMS; do
+  for f in demo-narrative-builder-2.1.0.zip SHA256SUMS; do
     gh api -H "Accept: application/vnd.github.raw" \
       "repos/ncee-dp-tech-sme/demo-video-generator/contents/releases/$f" > "$f"
   done
@@ -254,13 +254,13 @@ Needed only for step 9. Steps 1 to 8 work without them.
 Verify the download (both files in the same folder):
 
 ```bash
-shasum -a 256 -c SHA256SUMS        # demo-narrative-builder-2.0.0.zip: OK
+shasum -a 256 -c SHA256SUMS        # demo-narrative-builder-2.1.0.zip: OK
 ```
 
 ### 4.2 Automated install (recommended)
 
 ```bash
-unzip demo-narrative-builder-2.0.0.zip && cd demo-narrative-builder
+unzip demo-narrative-builder-2.1.0.zip && cd demo-narrative-builder
 ./install.sh --dry-run                                   # show what would happen, changes nothing
 ./install.sh --scope workspace --target /path/to/ws      # project-only install
 ./install.sh --scope global                              # all workspaces (~/.bob)
@@ -278,9 +278,9 @@ What the installer does:
 4. Writes the eleven skills (nine steps, orchestrator, follow-up questions) to `<root>/.bob/skills/<name>/SKILL.md`, replacing `{{DNB_HOME}}` and `{{DNB_PYTHON}}`
    with the real paths.
 5. Writes the mode rules to `<root>/.bob/rules-demo-narrative-builder/`.
-6. Appends the mode to `custom_modes.yaml` between marker comments
-   (`.bob/custom_modes.yaml` for workspace scope, `~/.bob/settings/custom_modes.yaml` for global scope).
-   If the slug exists already or the file cannot be extended safely, it stops and tells you to merge by hand.
+6. Installs the mode as a plugin in `<root>/.bob/plugins/demo-narrative-builder/` (`plugin.json`, `custom_modes.yaml`
+   and `mode/demo-narrative-builder.yaml`, generated from `modes/demo-narrative-builder.yaml`). Your own
+   `custom_modes.yaml` files are not touched.
 7. Backs up every file it replaces into `<root>/.bob/backups-demo-narrative-builder/<timestamp>/`
    and records everything in `install-manifest.json`.
 
@@ -309,8 +309,9 @@ Then either install with `--demobuilder-dir /path/to/demo-video-generator` (see 
    absolute path of this folder and `{{DNB_PYTHON}}` with the path of `.venv/bin/python`.
 3. Copy `registry.json` to the asset folder next to `tools/`.
 4. Copy `rules/rules-demo-narrative-builder/` to `.bob/rules-demo-narrative-builder/` (same replacements).
-5. Merge `modes/demo-narrative-builder.yaml` into `.bob/custom_modes.yaml` (workspace) or
-   `~/.bob/settings/custom_modes.yaml` (global). The slug must be unique and the file must stay valid YAML.
+5. Create the plugin folder `.bob/plugins/demo-narrative-builder/` with `plugin.json` (name, version, displayName),
+   `custom_modes.yaml` (the `customModes:` list from `modes/demo-narrative-builder.yaml`, plus `source: project`)
+   and `mode/demo-narrative-builder.yaml` (the same mode as a top-level mapping, plus `source: project`).
 
 ### 4.5 Verify
 
@@ -324,8 +325,9 @@ cd <root>/.bob/demo-narrative-builder
 
 ### 4.6 Rollback and update
 
-- Rollback: `./install.sh --uninstall --scope <scope> [--target DIR]`. It removes installed files and the managed
-  mode block, restores backed-up originals and saves your `.env` to the backups folder.
+- Rollback: `./install.sh --uninstall --scope <scope> [--target DIR]`. It removes installed files (skills, rules,
+  the mode plugin, tools), restores backed-up originals and saves your `.env` to the backups folder. Installs made
+  by version 2.0.0 or earlier, which appended the mode to `custom_modes.yaml`, are rolled back as well.
 - Update: uninstall, download the new zip (verify its checksum), install again.
 - Rebuild the zip after changing `dist/` (maintainers): bump `dist/VERSION`, copy `dist/` to a folder named
   `demo-narrative-builder/` without `.DS_Store`, `__pycache__`, `*.pyc`, `.gitignore`, `.env` and `narratives/`
@@ -452,7 +454,7 @@ Any step skill can also be entered directly; `skills.py check` verifies the file
 ```text
 dist/                               (demo-narrative-builder/ in the zip)
   README.md                         this document (identical copy of the repository root README.md)
-  VERSION                           2.0.0
+  VERSION                           2.1.0
   registry.json                     skill catalog: steps 1-9, support and orchestrator skills, files in and out
   requirements.txt                  pinned Python dependencies
   .env.example                      all runtime settings with comments
@@ -460,7 +462,7 @@ dist/                               (demo-narrative-builder/ in the zip)
   install.sh                        Bash/ZSH launcher, finds Python 3.10+
   install.py                        installer, backup manifest, rollback
   modes/
-    demo-narrative-builder.yaml     custom mode entry
+    demo-narrative-builder.yaml     custom mode entry (source for the generated plugin files)
   skills/
     video-narrative-workflow/SKILL.md        orchestrator
     narrative-01-intake/SKILL.md
@@ -640,7 +642,7 @@ export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_R
 
 | Symptom | Cause and fix |
 |---|---|
-| Mode not in the picker | `custom_modes.yaml` failed validation or the slug exists twice; check the file, start a new task |
+| Mode not in the picker | Check that `<root>/.bob/plugins/demo-narrative-builder/` holds `plugin.json`, `custom_modes.yaml` and `mode/demo-narrative-builder.yaml`, that they are valid YAML, and that the slug is not defined twice; start a new task |
 | Skills not offered | Names must be lowercase with single dashes; open a **new** task after installing |
 | `Blocked: the host does not resolve to a public internet address` | The URL points to an internal or private host. Export the page to PDF/DOCX/TXT instead |
 | `Only https:// URLs are accepted` | Use the https address |
@@ -671,6 +673,12 @@ export SCRIPT_FILE=IBM_Bob_Client_Demo_script_v2.md BUILD_DIR=build/bob SPEECH_R
 ---
 
 ## 13. Change notes
+
+**2.1.0 (14 Nov 2026), plugin install.** The installer now writes the mode as a plugin to
+`<root>/.bob/plugins/demo-narrative-builder/` (`plugin.json`, `custom_modes.yaml`, `mode/demo-narrative-builder.yaml`)
+instead of appending it to `custom_modes.yaml`; skills stay in `<root>/.bob/skills/` and the mode rules in
+`<root>/.bob/rules-demo-narrative-builder/`. Upgrade from 2.0.0: `install.py --uninstall` with the old package
+(removes the old mode block), then install the new zip.
 
 **2.0.0 (14 Nov 2026), skill system.** Nine step skills `narrative-01-intake` to `narrative-09-video-production`
 replace the earlier five skills; `narrative-source-ingest` became `narrative-02-ingest`, `narrative-fact-sheet` became

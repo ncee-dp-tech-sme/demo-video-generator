@@ -1,4 +1,4 @@
-# Installer for the Demo Narrative Builder asset package (skills, custom mode, mode rules, tools, templates).
+# Installer for the Demo Narrative Builder asset package (skills, mode plugin, mode rules, tools, templates).
 # Installs into a workspace (<dir>/.bob) or globally (~/.bob), creates a private virtual environment, keeps
 # backups of every file it replaces and can fully roll back with --uninstall.
 #
@@ -9,17 +9,21 @@
 # Change log
 # Sat 14 Nov 2026 19:14 CET - Initial version: install, backup, manifest-based rollback.
 # Sat 14 Nov 2026 19:28 CET - Skill system: copy pipeline/ and registry.json, --demobuilder-dir sets DEMOBUILDER_DIR in .env.
+# Sat 14 Nov 2026 20:45 CET - Mode is installed as a plugin in <root>/.bob/plugins/<name>/ instead of custom_modes.yaml.
 
 import argparse
 import json
 import shutil
 import subprocess
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parent
 NAME = "demo-narrative-builder"
+DISPLAY_NAME = "Demo Narrative Builder"
+# Marker of the legacy install (mode appended to custom_modes.yaml); kept so --uninstall still rolls those back
 MODE_BEGIN = f"  # >>> {NAME} (managed block, removed by install.py --uninstall) >>>"
 MODE_END = f"  # <<< {NAME} <<<"
 COPY_DIRS = ["tools", "pipeline", "templates", "references", "examples", "tests"]
@@ -27,13 +31,11 @@ COPY_FILES = ["requirements.txt", ".env.example", "VERSION", "registry.json"]
 MIN_PYTHON = (3, 10)
 
 
-# Resolve the Bob root folder and the custom-modes file for the chosen scope - Sat 14 Nov 2026 19:14 CET
+# Resolve the Bob root folder for the chosen scope - Sat 14 Nov 2026 20:45 CET
 def locate(scope, target):
     if scope == "global":
-        base = Path.home() / ".bob"
-        return base, base / "settings" / "custom_modes.yaml"
-    base = Path(target).expanduser().resolve() / ".bob"
-    return base, base / "custom_modes.yaml"
+        return Path.home() / ".bob"
+    return Path(target).expanduser().resolve() / ".bob"
 
 
 # Copy a folder without caches - Sat 14 Nov 2026 19:14 CET
@@ -66,36 +68,35 @@ def write_managed(path, text, backup_dir, manifest):
     manifest["files"].append(str(path))
 
 
-# Append the mode entry (between markers) to the custom modes file - Sat 14 Nov 2026 19:14 CET
-def install_mode(mode_file, backup_dir, manifest):
-    entry = (SRC / "modes" / f"{NAME}.yaml").read_text(encoding="utf-8").splitlines()
-    body = [ln for ln in entry[1:]]                       # drop the leading 'customModes:' line
-    block = "\n".join([MODE_BEGIN, *body, MODE_END]) + "\n"
-    if not mode_file.exists():
-        manifest["mode_file_created"] = True
-        write_managed(mode_file, "customModes:\n" + block, backup_dir, manifest)
-        return True
-    text = mode_file.read_text(encoding="utf-8")
-    if f"slug: {NAME}" in text:
-        print(f"  ! mode slug '{NAME}' already exists in {mode_file}; left unchanged")
-        return False
-    lines = text.splitlines()
-    idx = next((i for i, ln in enumerate(lines) if ln.strip() == "customModes:"), None)
-    tail_ok = idx is not None and all(
-        (not ln.strip()) or ln.startswith((" ", "-", "#")) for ln in lines[idx + 1:])
-    if not tail_ok:
-        print(f"  ! cannot append safely to {mode_file}. Merge modes/{NAME}.yaml into it by hand.")
-        return False
-    backup(mode_file, backup_dir, manifest)
-    mode_file.write_text(text.rstrip("\n") + "\n" + block, encoding="utf-8")
-    manifest["mode_file"] = str(mode_file)
-    return True
+# Write the mode as a plugin: plugin.json, custom_modes.yaml and mode/<slug>.yaml - Sat 14 Nov 2026 20:45 CET
+def install_plugin(plugin_dir, scope, backup_dir, manifest):
+    lines = (SRC / "modes" / f"{NAME}.yaml").read_text(encoding="utf-8").splitlines()[1:]   # drop 'customModes:'
+    source = "project" if scope == "workspace" else "global"
+    custom_modes = "customModes:\n" + "\n".join(lines) + f"\n    source: {source}\n"
+    mode = "\n".join(ln[4:] for ln in lines) + f"\nsource: {source}\n"   # list item -> top-level mapping
+    version = (SRC / "VERSION").read_text(encoding="utf-8").strip() if (SRC / "VERSION").is_file() else "0.0.0"
+    plugin = {
+        "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+        "name": NAME,
+        "version": version,
+        "description": "Turns a blog URL, PDF, TXT or Word document into an approval-gated video narrative "
+                       "script and, after approval, the finished video, through nine independent skills.",
+        "keywords": ["demo", "narrative", "video", "script", "mode"],
+        "extensions": {"com.ibm.bob": {"category": "developer-tools"}},
+        "id": str(uuid.uuid4()),
+        "displayName": DISPLAY_NAME,
+        "category": "developer-tools",
+    }
+    write_managed(plugin_dir / "plugin.json", json.dumps(plugin, indent=2) + "\n", backup_dir, manifest)
+    write_managed(plugin_dir / "custom_modes.yaml", custom_modes, backup_dir, manifest)
+    write_managed(plugin_dir / "mode" / f"{NAME}.yaml", mode, backup_dir, manifest)
 
 
 # Install everything and write the manifest - Sat 14 Nov 2026 19:14 CET
 def install(args):
-    base, mode_file = locate(args.scope, args.target)
+    base = locate(args.scope, args.target)
     home = base / NAME
+    plugin_dir = base / "plugins" / NAME
     manifest_path = home / "install-manifest.json"
     if manifest_path.exists():
         sys.exit(f"Already installed at {home}. Run with --uninstall first (your .env is backed up).")
@@ -106,7 +107,8 @@ def install(args):
     skills = sorted(p.name for p in (SRC / "skills").iterdir() if (p / "SKILL.md").is_file())
     rules_src = SRC / "rules" / f"rules-{NAME}"
     print(f"Demo Narrative Builder installer\n  scope:  {args.scope}\n  root:   {base}\n  tools:  {home}\n"
-          f"  skills: {len(skills)} ({', '.join(skills)})\n  mode:   {mode_file}\n  rules:  {base / ('rules-' + NAME)}\n"
+          f"  skills: {len(skills)} ({', '.join(skills)}) in {base / 'skills'}\n"
+          f"  mode:   {plugin_dir} (plugin)\n  rules:  {base / ('rules-' + NAME)}\n"
           f"  venv:   {'skipped' if args.no_venv else home / '.venv'}\n"
           "  Existing files that would be replaced are backed up first. Nothing is deleted.")
     if args.dry_run:
@@ -117,7 +119,7 @@ def install(args):
         sys.exit(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required.")
 
     manifest = {"scope": args.scope, "installed": stamp, "home": str(home), "files": [], "dirs": [],
-                "backups": [], "mode_file": None, "mode_file_created": False}
+                "backups": [], "plugin": str(plugin_dir)}
     make_dirs(home, manifest)
     for d in COPY_DIRS:
         if (SRC / d).is_dir():
@@ -155,22 +157,22 @@ def install(args):
     for f in sorted(rules_src.glob("*.md")):
         write_managed(base / f"rules-{NAME}" / f.name, render(f.read_text(encoding="utf-8")),
                       backup_dir, manifest)
-    install_mode(mode_file, backup_dir, manifest)
+    install_plugin(plugin_dir, args.scope, backup_dir, manifest)
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"\nInstalled. Open a new Bob task and pick the mode 'Demo Narrative Builder'.\n"
           f"Settings: {home / '.env'}   Rollback: python3 install.py --uninstall --scope {args.scope}"
           + (f" --target {args.target}" if args.scope == "workspace" else ""))
 
 
-# Remove installed files, the managed mode block, and restore backups - Sat 14 Nov 2026 19:14 CET
+# Remove installed files (and a legacy managed mode block), and restore backups - Sat 14 Nov 2026 20:45 CET
 def uninstall(args):
-    base, _ = locate(args.scope, args.target)
+    base = locate(args.scope, args.target)
     home = base / NAME
     manifest_path = home / "install-manifest.json"
     if not manifest_path.exists():
         sys.exit(f"Nothing to uninstall: no manifest at {manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    print(f"Uninstalling from {base}. Files and the mode block are removed; backups are restored.")
+    print(f"Uninstalling from {base}. Skills, rules, the mode plugin and tools are removed; backups are restored.")
     if not args.yes and input("Proceed? [y/N] ").strip().lower() != "y":
         sys.exit("Cancelled.")
     if (home / ".env").exists():                      # keep the user's settings

@@ -1,0 +1,8 @@
+PROMPT: mode should now be installed in the plugins directory, rules in the rules directory and skills in the skills directory.  The current install script doesn't do that.  Look in /Users/erwin/development/pentestmode/.bob for the required files for the mode and update all files and readme
+Sat Nov 14 20:45 CET 2026
+
+- Reference layout (pentestmode/.bob/plugins/<name>/): plugin.json, custom_modes.yaml (customModes list + source), mode/<slug>.yaml (flat mode + source).
+- dist/install.py: mode now written to <root>/.bob/plugins/demo-narrative-builder/ (plugin.json with uuid + VERSION, custom_modes.yaml, mode/demo-narrative-builder.yaml; source project|global) instead of appending to custom_modes.yaml. Skills stay in .bob/skills/, rules in .bob/rules-demo-narrative-builder/ (Bob's mode-specific rules dir). Manifest-based --uninstall removes the plugin; legacy block removal kept for 2.0.0 installs.
+- Version 2.1.0: dist/VERSION, README.md (install steps 6, manual install, rollback, layout, troubleshooting, change notes), copies in docs/ and dist/ synced, releases/demo-narrative-builder-2.1.0.zip rebuilt, SHA256SUMS updated (2.0.0 zip removed).
+- Verified: install/uninstall into a temp workspace (plugin files created and removed), custom_modes.yaml entry == mode/ file (ruby YAML), zip checksum OK. Repo .venv lacks pypdf/defusedxml, so 4 ingest tests error there (unrelated, pre-existing).
+- Assumption: global scope uses ~/.bob/plugins/.
