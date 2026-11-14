@@ -237,8 +237,7 @@ Needed only for step 9. Steps 1 to 8 work without them.
 ### 4.1 Download the release zip
 
 `releases/demo-narrative-builder-2.0.0.zip` contains only the files the installer needs: no caches, `.DS_Store`,
-`.env` or narratives. It unpacks to a folder `demo-narrative-builder/`. The repository is private, so you must be
-signed in to GitHub with access to the `ncee-dp-tech-sme` organisation.
+`.env` or narratives. It unpacks to a folder `demo-narrative-builder/`.
 
 - **Browser:** open <https://github.com/ncee-dp-tech-sme/demo-video-generator>, go to `releases/`, open
   `demo-narrative-builder-2.0.0.zip` and `SHA256SUMS`, and click **Download raw file** for each.
