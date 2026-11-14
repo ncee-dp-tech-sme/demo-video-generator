@@ -1,0 +1,47 @@
+I tested the plugin but the output doesn't genrate an video like you did with sample screens and animations. Only text as placeholders. Please review so the plugin creates videos as you created from @task-outcomes/ibm_bob_client_demo_script.txt and @task-outcomes/hexstrike_demo_video.txt
+
+Sat Nov 14 22:09:07 CET 2026
+
+RESULT
+Plugin 2.2.0: step 9 now draws animated mock screens instead of text cards.
+
+ROOT CAUSE
+The default renderer (pipeline/generic_video.py) only drew text cards. The rich scenes (terminal, browser, IDE, diagrams)
+existed only as hard-coded code for the two earlier demos (build_video.py, build_bob_video.py).
+
+CHANGES (dist/)
+- pipeline/storyboard.py (new): turns each script row into a scene spec (layout + content) automatically from backtick
+  spans, quotes, commands, files, URLs, numbers, labels and the voice-over; merges an optional narratives/<slug>/storyboard.json
+  over it; invalid scenes fall back to the automatic plan with a warning.
+- pipeline/scene_engine.py (new): Pillow renderer, layouts title, cards, checklist, terminal (typed commands), browser
+  (pointer, click, modal), ide (file tree, typed code, assistant panel, terminal), flow (arrows with moving dots),
+  stats (count-up), feed (scrolling table), split; overlays: heading, callouts, badges, footer, name plate, corner label.
+  Items appear when the matching words are spoken (fallback: even spread).
+- pipeline/generic_video.py: uses storyboard + scene engine; estimated timeline so review frames work before audio exists;
+  "placeholder visuals" text removed.
+- tools/production.py: new `storyboard` command (draft storyboard.json, never overwritten without --force), check reports
+  storyboard and bundled pipeline files, stages get STORYBOARD_FILE, production.json records storyboard source.
+- skills/narrative-09-video-production/SKILL.md: new storyboard step, review-before-audio, full schema; wording about
+  placeholders removed.
+- tests/test_tools.py: 38 tests (6 new for storyboard/scene engine/review frames). README (3 copies), VERSION 2.2.0.
+- releases/demo-narrative-builder-2.2.0.zip + SHA256SUMS (51cef296d1c71f7b3465ca11f5e7225248cace7693ca1e6ab1c1e49b542b600e).
+
+VALIDATION
+- 38 unit tests OK; tools/skills.py verify OK (11 skills).
+- Review frames rendered and inspected for sample script (4 scenes), IBM Bob v2 (14 scenes), HexStrike (9 scenes) and a
+  hand-written storyboard.json (split terminal+browser, flow, invalid-scene fallback, IDE with panel).
+- End-to-end MP4 + SRT rendered with ffmpeg (sample script, estimated timeline, silent audio). The real voice-over was
+  not run here because macOS `say` is blocked in the sandbox.
+- Defects found and fixed while reviewing: stacked badges overlapping content, wrong IDE prompt from a bare URL, terminal
+  output taken from non-output spans, modal created without a dialog in the script, double heading on browser scenes,
+  markdown bullets shown as removed diff lines.
+
+HOW TO USE
+Reinstall: `install.py --uninstall` with the old package, then install the 2.2.0 zip. In step 9 the mode runs
+`production.py storyboard`, refines storyboard.json from the script text, shows review frames (--stage sheet), then audio
+and video. Audio still needs macOS `say`.
+
+LIMITS
+Screens are stylised illustrations built from the script text, not product footage (corner label says so); areas the
+script does not describe show grey placeholder bars. Quality of the automatic plan depends on how concrete the VISUAL
+column is; the storyboard.json refinement step closes the gap.

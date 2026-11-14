@@ -1,0 +1,59 @@
+fix the extractor and the heading clipping in a 2.2.1 release in a new task
+Sat Nov 14 22:37:03 CET 2026
+
+================================================================================
+DEMO NARRATIVE BUILDER - RELEASE 2.2.1 OUTCOME REPORT
+================================================================================
+
+1. INVESTIGATION SUMMARY
+--------------------------------------------------------------------------------
+Investigation of HTML Extractor on IBM Community (HigherLogic):
+- Tested live fetching and parsing of IBM Community blog page:
+  https://community.ibm.com/community/user/blogs/erwin-friethoff/2026/08/05/guardium-exposure-manager-qradar-log-sources
+- Root Cause Identified:
+  1. HigherLogic / ASP.NET WebForms architecture wraps the entire document body inside `<form id="MasterPageForm">` (from lines 11 to ~2000).
+  2. In ingest.py (v2.2.0), `"form"` was in `SKIP_TAGS`. This caused `self._skip` to be incremented at the top of the body and never cleared, suppressing 100% of the document content (0 blocks, 0 sections, error: "No readable text was found in the source").
+  3. In addition, HigherLogic pages do not use semantic `<article>` or `<main>` tags; the content is enclosed in CMS `<div>` elements (`class="blogs-block"`, `class="ContentUserControl"`), accompanied by navigation bars, cookie banners, rating widgets, and footer noise.
+
+2. IMPLEMENTED CHANGES
+--------------------------------------------------------------------------------
+Issue 1: Generic Content-Container Fallback (`dist/tools/ingest.py`)
+- Removed `<form>` from `SKIP_TAGS` so top-level CMS wrapper forms do not silence entire page bodies.
+- Added form controls (`input`, `textarea`, `option`, `select`, `button`) to `SKIP_TAGS` along with `script`, `style`, `noscript`, `nav`, `footer`, `aside`, `svg`, `iframe`, `template`.
+- Added noise class / id filtering (`cookie`, `banner`, `consent`, `modal`, `popup`, `share[-_]?links?`, `breadcrumb`, `pagination`, `site[-_]?nav`, `global[-_]?header`, `global[-_]?footer`).
+- Implemented lightweight DOM container tracking (`_Node`, `_HTMLExtractor`) supporting standard `<article>`/`<main>` tags (>= 100 words), with a robust fallback that searches container elements (`div`, `section`, `article`, `main`, `body`), prioritises content-related keywords (`content`, `body`, `post`, `blog`, `entry`, `message`, `article`, `main`, `topic`, `story`, `text`), and selects the container with the highest paragraph text density.
+- Preserved all security guards: SSRF/private-address checks, size limits, defusedxml, untrusted_content flag.
+- Added unit test `test_html_higherlogic_nested_div_fallback` in `dist/tests/test_tools.py`.
+
+Issue 2: Heading Fitting & Layout Top Offset (`dist/pipeline/scene_engine.py`)
+- Updated `overlay_heading(d, S)`:
+  * Computes available heading width stopping safely left of any top-right badges (`1720 - max_badge_width` with badges, `1760` without).
+  * Automatically reduces font size from 50 down to 34 via `fit_size`.
+  * If the heading still exceeds available width at size 34, wraps across up to 2 lines via `wrapn` before clipping.
+  * Adjusts accent underline position dynamically (y=100 for 1 line, y=120 for 2 lines).
+- Updated `draw_scene`:
+  * Automatically reserves `top = 180` offset when a two-line heading is detected (vs `top = 150` for single-line heading), preventing vertical overlap with flow, ide, cards, and split layouts.
+- Updated `schedule`:
+  * Handled index / key boundaries safely when `C.TL` is empty or shorter than scene index during unit testing.
+- Added unit test `test_long_heading_fit_and_wrap` in `dist/tests/test_tools.py`.
+- Rendered and visually inspected review frame sheets for 4 layouts (`flow`, `ide`, `cards`, `split`) with long 114-character heading; confirmed zero text clipping and zero overlap.
+
+3. RELEASE ARTIFACTS & VERIFICATION
+--------------------------------------------------------------------------------
+- Version Bump:
+  * `dist/VERSION` -> `2.2.1`
+  * `dist/README.md` updated (version line, release zip references, 40 test count, section 13 change note).
+  * `README.md` and `docs/README.md` updated identically.
+- Verification:
+  * `cd dist && ../.venv/bin/python -m unittest discover -s tests`: 40 tests, all PASS.
+  * `../.venv/bin/python tools/skills.py verify`: 11 skills, 0 problems, PASS.
+- Packaging:
+  * Package: `releases/demo-narrative-builder-2.2.1.zip` (clean archive, .env.example bundled, no caches or git files).
+  * Checksum: `releases/SHA256SUMS` updated and verified (`d4cfa0e0c042878ad41fde067d44fc4735d38b9bfa2af896752609531b768443`).
+  * Verified: `shasum -a 256 -c SHA256SUMS` -> OK.
+  * Old 2.2.0 zip deleted.
+
+4. REMAINING LIMITATIONS
+--------------------------------------------------------------------------------
+- JavaScript-only SPAs (Client-Side Rendered pages with empty initial HTML) still require plain markdown/text fallback if no server-rendered HTML or API is available.
+- macOS is required for Step 9 video audio synthesis (`say` command).

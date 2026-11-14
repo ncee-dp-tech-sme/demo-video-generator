@@ -6,6 +6,7 @@
 #
 # Change log
 # Sat 14 Nov 2026 19:14 CET - Initial version: URL (SSRF-guarded), PDF, TXT/MD and DOCX ingestion.
+# Sat 14 Nov 2026 22:30 CET - Generic content-container fallback for CMS pages (HigherLogic/ASP.NET/custom divs).
 
 import argparse
 import hashlib
@@ -29,10 +30,13 @@ import common as C
 
 ALLOWED_CONTENT_TYPES = ("text/html", "application/xhtml+xml", "text/plain")
 TEXT_EXTENSIONS = {".txt", ".md"}
-SKIP_TAGS = {"script", "style", "noscript", "nav", "footer", "aside", "form", "svg", "iframe",
-             "template", "button", "select"}
+SKIP_TAGS = {"script", "style", "noscript", "nav", "footer", "aside", "svg", "iframe",
+             "template", "button", "select", "input", "textarea", "option"}
+CONTAINER_TAGS = {"div", "section", "article", "main", "body", "form", "table", "tbody"}
 BLOCK_TAGS = {"p", "li", "blockquote", "pre", "td", "th", "figcaption", "dd", "dt"}
 HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+NOISE_CLASSES = re.compile(r"(?i)\b(cookie|banner|consent|modal|popup|share[-_]?links?|breadcrumb|pagination|site[-_]?nav|global[-_]?header|global[-_]?footer)\b")
+CONTAINER_HINTS = re.compile(r"(?i)\b(content|body|post|blog|entry|message|article|main|topic|story|text)\b")
 MAX_DOCX_XML_BYTES = 50 * 1024 * 1024
 MAX_URL_LENGTH = 2048
 CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -166,25 +170,43 @@ def fetch_url(url):
 
 # ---------------------------------------------------------------- parsers
 
-# Extracts headings and paragraphs from HTML, preferring <article>/<main> - Sat 14 Nov 2026 19:14 CET
+# Represents a container element in the HTML DOM tree - Sat Nov 14 22:30:45 CET 2026
+class _Node:
+    def __init__(self, tag, attrs, parent=None):
+        self.tag = tag
+        self.attrs = attrs
+        self.parent = parent
+        self.children = []
+        self.blocks = []  # (kind, level, text)
+
+    @property
+    def id(self):
+        return self.attrs.get("id", "")
+
+    @property
+    def cls(self):
+        return self.attrs.get("class", "")
+
+
+# Extracts headings and paragraphs from HTML, supporting <article>/<main> and generic container fallbacks - Sat Nov 14 22:30:45 CET 2026
 class _HTMLExtractor(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.title = ""
         self.meta = {}
-        self.blocks = []        # (kind, level, text, in_main)
-        self._skip = 0
-        self._main = 0
+        self.root = _Node("root", {})
+        self._stack = [self.root]
+        self._skip_stack = []
         self._in_title = False
-        self._kind = None
+        self._cur_block = None
         self._buf = []
 
     def flush(self):
         text = norm(" ".join(self._buf))
-        if text and self._kind:
-            kind, level = self._kind
-            self.blocks.append((kind, level, text, self._main > 0))
-        self._buf, self._kind = [], None
+        if text and self._cur_block:
+            kind, level = self._cur_block
+            self._stack[-1].blocks.append((kind, level, text))
+        self._cur_block, self._buf = None, []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -194,38 +216,53 @@ class _HTMLExtractor(HTMLParser):
             key = (a.get("property") or a.get("name") or "").lower()
             if key in ("og:title", "author", "article:author", "article:published_time", "date"):
                 self.meta.setdefault(key, norm(a.get("content", "")))
-        if tag in SKIP_TAGS:
-            self._skip += 1
-        if tag in ("article", "main"):
-            self._main += 1
+        cls_id = (a.get("class", "") + " " + a.get("id", "")).strip()
+        is_skip = tag in SKIP_TAGS or bool(NOISE_CLASSES.search(cls_id))
+        if is_skip or self._skip_stack:
+            self._skip_stack.append(tag)
+            return
         if tag in HEADING_TAGS:
             self.flush()
-            self._kind = ("h", int(tag[1]))
+            self._cur_block = ("h", int(tag[1]))
         elif tag in BLOCK_TAGS:
             self.flush()
-            self._kind = ("p", 0)
+            self._cur_block = ("p", 0)
+        if tag in CONTAINER_TAGS:
+            self.flush()
+            node = _Node(tag, a, self._stack[-1])
+            self._stack[-1].children.append(node)
+            self._stack.append(node)
 
     def handle_endtag(self, tag):
         if tag == "title":
             self._in_title = False
-        if tag in SKIP_TAGS and self._skip:
-            self._skip -= 1
-        if tag in ("article", "main") and self._main:
-            self.flush()
-            self._main -= 1
+        if self._skip_stack:
+            for i in range(len(self._skip_stack) - 1, -1, -1):
+                if self._skip_stack[i] == tag:
+                    self._skip_stack.pop(i)
+                    break
+            return
         if tag in HEADING_TAGS or tag in BLOCK_TAGS:
             self.flush()
+        if tag in CONTAINER_TAGS:
+            self.flush()
+            for i in range(len(self._stack) - 1, 0, -1):
+                if self._stack[i].tag == tag:
+                    self._stack = self._stack[:i]
+                    break
 
     def handle_data(self, data):
         if self._in_title:
             self.title += data
-        elif not self._skip and self._kind:
-            self._buf.append(data)
-        elif not self._skip and data.strip():
-            self._kind, self._buf = ("p", 0), [data]   # stray text outside block tags
+        elif not self._skip_stack:
+            if self._cur_block:
+                self._buf.append(data)
+            elif data.strip():
+                self._cur_block = ("p", 0)
+                self._buf.append(data)
 
 
-# Parse an HTML page into a Doc - Sat 14 Nov 2026 19:14 CET
+# Parse an HTML page into a Doc - Sat Nov 14 22:30:45 CET 2026
 def parse_html(raw, charset):
     try:
         html = raw.decode(charset, errors="replace")
@@ -235,10 +272,56 @@ def parse_html(raw, charset):
     ex.feed(html)
     ex.close()
     ex.flush()
-    main = [b for b in ex.blocks if b[3]]
-    use = main if C.word_count(" ".join(b[2] for b in main)) >= 100 else ex.blocks
+
+    def all_blocks(node):
+        blks = list(node.blocks)
+        for c in node.children:
+            blks.extend(all_blocks(c))
+        return blks
+
+    def find_tags(node, tags):
+        found = []
+        if node.tag in tags:
+            found.append(node)
+        for c in node.children:
+            found.extend(find_tags(c, tags))
+        return found
+
+    # 1. Try standard semantic <article> and <main> tags
+    primary = find_tags(ex.root, ("article", "main"))
+    pri_blocks = []
+    for n in primary:
+        pri_blocks.extend(all_blocks(n))
+    pri_words = sum(C.word_count(b[2]) for b in pri_blocks if b[0] == "p")
+
+    if pri_words >= 100:
+        use_blocks = pri_blocks
+    else:
+        # 2. Generic fallback: evaluate all container elements
+        all_nodes = []
+        def collect(node):
+            blks = all_blocks(node)
+            p_text = " ".join(b[2] for b in blks if b[0] == "p")
+            p_words = C.word_count(p_text)
+            cls_id = (node.cls + " " + node.id).strip()
+            has_hint = bool(CONTAINER_HINTS.search(cls_id))
+            all_nodes.append((node, p_words, has_hint, blks))
+            for c in node.children:
+                collect(c)
+        collect(ex.root)
+
+        hinted = [n for n in all_nodes if n[2] and n[1] > 0]
+        pool = hinted if hinted else [n for n in all_nodes if n[1] > 0]
+        if pool:
+            max_words = max(n[1] for n in pool)
+            close = [n for n in pool if n[1] >= 0.85 * max_words]
+            best = min(close, key=lambda n: len(n[3]))
+            use_blocks = best[3]
+        else:
+            use_blocks = all_blocks(ex.root)
+
     doc = Doc(norm(ex.meta.get("og:title") or ex.title))
-    for kind, level, text, _ in use:
+    for kind, level, text in use_blocks:
         if kind == "h":
             doc.title = doc.title or text
             doc.heading(text, level)

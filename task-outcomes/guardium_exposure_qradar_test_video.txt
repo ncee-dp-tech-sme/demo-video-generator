@@ -1,0 +1,100 @@
+Create a test video from https://community.ibm.com/community/user/blogs/erwin-friethoff/2026/08/05/guardium-exposure-manager-qradar-log-sources in a new task
+Sat Nov 14 22:19:47 CET 2026
+
+================================================================================
+DEMO NARRATIVE BUILDER (v2.2.0) - TEST VIDEO EXECUTION OUTCOME
+================================================================================
+
+1. OVERVIEW & SOURCE PROVENANCE
+--------------------------------------------------------------------------------
+Source URL: https://community.ibm.com/community/user/blogs/erwin-friethoff/2026/08/05/guardium-exposure-manager-qradar-log-sources
+Source Title: Building Guardium Exposure Manager → QRadar Log Sources with the Universal Cloud REST API — A Practitioner’s Guide
+Author: Erwin Friethoff (IBM Security Architect)
+Narrative Folder: narratives/guardium-exposure-qradar-test/
+Topic: IBM Guardium Exposure Manager (GEM) to IBM QRadar SIEM Integration via Universal Cloud REST API (UCC) Protocol
+
+2. DELIVERABLES & GENERATED ARTIFACTS
+--------------------------------------------------------------------------------
+- Ingested Data:
+  * narratives/guardium-exposure-qradar-test/source.json
+  * narratives/guardium-exposure-qradar-test/source.txt
+  * narratives/guardium-exposure-qradar-test/factsheet.md
+  * narratives/guardium-exposure-qradar-test/structure.md
+
+- Script & Gate:
+  * Script: narratives/guardium-exposure-qradar-test/guardium-exposure-qradar-test_script_v1.md
+    - SHA256: dba1e718a7759654b6676dba74e8d3986b7df316ec089727f358fc413008199a
+    - Validation: PASS (0 errors, 0 warnings, production plan complete)
+  * Approval: narratives/guardium-exposure-qradar-test/approval.json (Option 1 - Approved)
+
+- Storyboard & Review Frames:
+  * Storyboard: narratives/guardium-exposure-qradar-test/storyboard.json
+  * Review Sheet PNGs: narratives/guardium-exposure-qradar-test/production/review/sheet_00.png through sheet_08.png
+
+- Master Audio & Video:
+  * Audio Track: narratives/guardium-exposure-qradar-test/production/build/audio.wav (24,008,576 bytes)
+  * Timeline: narratives/guardium-exposure-qradar-test/production/build/timeline.json
+  * Master MP4: narratives/guardium-exposure-qradar-test/production/output/guardium-exposure-qradar-test.mp4
+    - Size: 11,346,386 bytes (~11.3 MB)
+    - SHA256: 27d7114534a09271175207ef4954ed1eac2026f47378da246040cc610bf77160
+    - Format: 1920x1080 @ 24 fps, H.264 / AAC
+  * Captions: narratives/guardium-exposure-qradar-test/production/output/guardium-exposure-qradar-test.srt
+    - Size: 2,017 bytes
+    - SHA256: 6cdc00be3131205f53e3e2e60b4bbcf02512e420f8bce9376139a1e7625c9016
+
+3. TIMING & METRICS
+--------------------------------------------------------------------------------
+- Target Runtime: 135.0 seconds (2:15)
+- Actual Rendered Runtime: 136.0 seconds (within ±1.0 s tolerance)
+- Total Spoken Words: 211 words
+- Speech Pace: ~145 WPM with 0.8s [BEAT] breath marks
+- Scenes Extended: 0 (all 9 scenes completed comfortably within their 15.0 s windows)
+
+4. SCENE-BY-SCENE ANIMATED LAYOUTS (NON-CARD PROOF)
+--------------------------------------------------------------------------------
+Scene 0 (0:00–0:15): `title` layout
+  - Kicker: "IBM Security Integration"
+  - Title: "Guardium Exposure Manager → QRadar"
+  - Badges: "UCC Protocol", "QRadar SIEM"
+  - Progress steps navigation bar
+
+Scene 1 (0:15–0:30): `flow` layout (Architecture Diagram)
+  - 5 connected nodes: GEM SaaS -> UCC Workflow XML -> QRadar Managed Host -> Log Source Extension -> QRadar Log Activity
+  - Animated chips and protocol badges (Agentless, Zero Middleware)
+
+Scene 2 (0:30–0:45): `cards` layout (Structured Comparison)
+  - 3 side-by-side connector cards: Issues (24h scan), Activity Log (10m rolling), Combined (Single Log Source, Recommended)
+
+Scene 3 (0:45–1:00): `terminal` layout (Interactive Console)
+  - Typed `$ git clone https://github.com/ncee-dp-tech-sme/gem_qradar_ucc.git`
+  - Directory listing of XML artifacts with terminal styling
+
+Scene 4 (1:00–1:15): `ide` layout (Code & XML Editor)
+  - Multi-tab file tree showing `GEM-Combined-WorkflowParameterValues.xml`
+  - Syntax highlighted XML editor panel and side verification messages
+
+Scene 5 (1:15–1:30): `browser` layout (Web UI Application)
+  - QRadar Admin Console mockup (`https://qradar.internal/console/admin#log-sources`)
+  - 5 numbered workflow deployment steps with status chips and "Deploy Changes" button
+
+Scene 6 (1:30–1:45): `feed` layout (Real-Time Event Table)
+  - Live QRadar Log Activity stream displaying parsed GEM Issue alerts and Activity Audit records with CEP tags and severity chips
+
+Scene 7 (1:45–2:00): `checklist` layout (Interactive Checklist)
+  - 4 animated practitioner checklist items with voice cues: Bare Hostname, Recurrence Sync, URL Encoding, and Device Type ID
+
+Scene 8 (2:00–2:15): `title` layout (Outro & Call-To-Action)
+  - Summary stats, GitHub repository link, and closing badges
+
+5. PLUGIN & RENDERER FINDINGS & SUGGESTIONS
+--------------------------------------------------------------------------------
+1. Ingestion of HigherLogic / IBM Community Pages:
+   - Ingest tool `ingest.py` looks for standard `<article>` or `<main>` tags. On complex community forum platforms (HigherLogic), content is wrapped in custom CMS divs, causing `_HTMLExtractor` to miss main blocks if the word count heuristic is not reached.
+   - Recommendation: Add fallback support for HigherLogic/community DOM containers (`div[id*="Content"]`, `div[class*="blog-content"]`) or allow markdown fallback extraction.
+
+2. Heading Truncation in Rich Layouts:
+   - When a layout `heading` exceeds 45 characters on high-density layouts (`flow`, `ide`), text clipping with ellipses occurred in review frames.
+   - Resolution: Storyboard refinement kept titles under 40 characters (`Architecture: Agentless REST Ingestion`), producing clean review sheets.
+
+3. Step 9 Verification:
+   - The generic video renderer successfully produced 8 diverse animated technical screens (flow, terminal, ide, browser, feed, checklist, cards, title) without falling back to plain text cards.
