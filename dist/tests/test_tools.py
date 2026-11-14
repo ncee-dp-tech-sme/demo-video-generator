@@ -4,6 +4,7 @@
 # Change log
 # Sat 14 Nov 2026 19:14 CET - Initial version: ingest formats, SSRF/URL guards, DOCX entity attack, validator.
 # Sat 14 Nov 2026 19:28 CET - Skill system: registry consistency, approval record, step 9 gate, step status.
+# Sat 14 Nov 2026 20:04 CET - README check finds the merged README in the package root or the repository root.
 
 import contextlib
 import io
@@ -26,6 +27,7 @@ import validate_script as V  # noqa: E402
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 SAMPLE_TXT = ROOT / "examples" / "sample_source.txt"
 SAMPLE_SCRIPT = ROOT / "examples" / "sample_script_v1.md"
+README = next((p for p in (ROOT / "README.md", ROOT.parent / "README.md") if p.is_file()), None)  # zip or repository
 
 
 # Build a small DOCX in memory - Sat 14 Nov 2026 19:14 CET
@@ -232,9 +234,9 @@ class SkillSystemTests(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(json.loads(out)["skills"], 11)
 
-    @unittest.skipUnless((ROOT / "README.md").is_file(), "README.md is not part of an installed copy")
+    @unittest.skipUnless(README is not None, "README.md is not part of an installed copy")
     def test_every_skill_is_documented_in_the_readme(self):
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        readme = README.read_text(encoding="utf-8")
         reg = skills.load_registry()
         ids = [s["id"] for s in reg["steps"]] + [x["id"] for x in reg["support"]] + [reg["orchestrator"]["id"]]
         for sid in ids:
