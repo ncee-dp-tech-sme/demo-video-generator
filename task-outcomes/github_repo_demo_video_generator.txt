@@ -1,0 +1,12 @@
+PROMPT: Create a zipped package from the dist folders and only add the required files. Update the README.md with instructions on how to download the zip archive and take the rest of the installation steps. After that create a new GitHub repository named "demo-video-generator" under the organization "ncee-dp-tech-sme" at https://github.com/orgs/ncee-dp-tech-sme. Initialize the repository with appropriate .gitignore configuration to prevent sensitive files from being committed. Commit all project files and assets, verify .gitignore before pushing, push all commits, verify no sensitive files (credentials, API keys, env vars, private config, build artifacts) are in the commit history. Confirm repo creation, staging, commit and push. Use the giturl as stated above.
+TIMESTAMP: Sat 14 Nov 2026 19:58:28 CET
+
+RESULT
+- Zip: releases/demo-narrative-builder-2.0.0.zip (62 entries, 84 KB), top folder demo-narrative-builder/, SHA-256 930d4909575313945d8851935baa6014e9312f24aa1b2b25800480865f5de1ac.
+  Excludes .DS_Store, __pycache__, *.pyc, dist/.gitignore, .env, narratives. Installer dry-run from the unpacked zip OK.
+- README.md: new section "Install from the zip package" (download via browser or gh api, checksum, unzip, dry-run, install, verify, rollback).
+- .gitignore: .env/.env.* (keeps .env.example), keys/certs, .bob/, .venv, caches, build/, output/, narratives/, logs, OS/editor files.
+- Repo: https://github.com/ncee-dp-tech-sme/demo-video-generator (private, branch main).
+- Staged 69 files, commit fb0841a, pushed; local HEAD == origin/main.
+- Checks: no .env/keys/.bob/build/output/.venv/mp4 in index or history; credential regex scan clean; pre-commit and pre-push Block Secrets scans clean; zip download via gh api matches checksum.
+- Note: output/*.mp4 and build/ are generated artifacts and were deliberately not committed.
