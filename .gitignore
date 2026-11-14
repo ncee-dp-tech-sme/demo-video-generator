@@ -1,0 +1,39 @@
+# Secrets and environment files (only the *.example templates are tracked)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+credentials*.json
+secrets*
+*.secret
+.netrc
+.npmrc
+.pypirc
+
+# Private IDE / assistant configuration
+.bob/
+
+# Virtual environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Build artifacts and generated output
+build/
+output/
+narratives/
+*.log
+
+# OS / editor files
+.DS_Store
+.idea/
+.vscode/

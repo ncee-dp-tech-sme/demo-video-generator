@@ -1,0 +1,16 @@
+How many tools does the agent we build have available in @core/hexstrike_tools.py ?
+Mon Nov  9 00:20:04 CET 2026
+
+The agent has 11 tools defined in HEXSTRIKE_OPENAI_TOOLS in core/hexstrike_tools.py:
+
+1. nmap_scan - Network port scanning, OS fingerprinting, and service version detection
+2. gobuster_dir - High-speed directory and file brute-forcing on web servers
+3. sqlmap_scan - Detection and exploitation of SQL injection vulnerabilities
+4. nuclei_scan - Template-based vulnerability scanning across web, network, and cloud targets
+5. nikto_scan - Web server vulnerability scanning for dangerous files, outdated versions, and misconfigurations
+6. ffuf_fuzz - High-performance web fuzzing for directory and parameter discovery
+7. hydra_attack - Network login password auditing and service brute-forcing
+8. trivy_scan - Container, filesystem, and package vulnerability scanning
+9. whois_lookup - Domain registration information and IP ASN WHOIS data lookup
+10. execute_command - Authorized security command execution in the HexStrike environment
+11. check_health - Health and connectivity verification for the HexStrike MCP server

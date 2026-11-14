@@ -1,0 +1,18 @@
+@hexstrike_mcp.py has many more tools available, add them to the @core/hexstrike_tools.py
+Mon Nov  9 00:25:30 CET 2026
+
+Successfully integrated all 149+ tools available in hexstrike_mcp.py into core/hexstrike_tools.py.
+
+Key Enhancements Made:
+1. Dynamic Tool Introspection & Schema Generation:
+   - Added `build_hexstrike_openai_tools()` which automatically introspects and generates OpenAI function schemas for all 149+ tools defined in `hexstrike_mcp.setup_mcp_server`.
+   - Included backwards-compatible and convenient aliases (`whois_lookup`, `gobuster_dir`, `ffuf_fuzz`, `check_health`).
+
+2. Comprehensive HexStrikeToolExecutor:
+   - Initialized FastMCP tool instance in `HexStrikeToolExecutor.__init__` with the configured `HexStrikeClient`.
+   - Implemented dynamic parameter mapping and filtering in `execute_tool()` to safely dispatch LLM calls to any of the 149+ tool handlers.
+   - Added `get_available_tools()` utility method.
+
+3. Testing & Verification:
+   - Added `tests/test_hexstrike_tools.py` verifying tool count, parameter structure, execution dispatching, and error handling.
+   - Ran full test suite (20 tests passed).

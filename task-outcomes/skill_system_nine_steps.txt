@@ -1,0 +1,16 @@
+PROMPT: Create a comprehensive skill system for a video production application where all nine steps, including step 9 (video production), are implemented as accessible, modular skills. Refactor the existing codebase to treat each step as an independent skill that users and the application mode can easily access and utilize. Update all related assets, configuration files, UI components, documentation, and database schemas to support this skill-based architecture. Ensure that step 9 (video production) is now equally accessible and integrated as a skill alongside the other eight steps. Maintain consistency across all user-facing elements, code structure, and supporting materials to reflect this unified skill system.
+DATE: Sat 14 Nov 2026 19:41 CET
+
+OUTCOME
+- dist/ is now v2.0.0 with 9 step skills + orchestrator + follow-up skill (11 total): narrative-01-intake, -02-ingest, -03-fact-sheet, -04-structure, -05-script, -06-validate, -07-production-plan, -08-approval-gate, -09-video-production
+- Assumption: the old step 9 was "Outcome"; step 9 is now video production, outcome record became task completion of the orchestrator
+- Renamed: narrative-source-ingest -> 02-ingest, narrative-fact-sheet -> 03-fact-sheet; video-narrative-script split into 05-script, 06-validate, 07-plan, 08-gate
+- New code: registry.json (skill catalog), tools/skills.py (list/show/check/status/verify), tools/approval.py (sha256-bound approval), tools/production.py (step 9 gate, prerequisites, audio/still/sheet/video), pipeline/generic_audio.py + generic_video.py
+- Changed: validate_script.py (--require-plan, --report), script template (plan marker) + new production_plan_template, mode yaml, 3 rules, question bank (+production), methodology, install.py (pipeline, registry, --demobuilder-dir), .env.example (DEMOBUILDER_DIR, PIPELINE_PYTHON, VOICE, FPS), dist/README.md, root README.md
+- "Database schema": there is no database in the project; data model = registry.json + per-narrative files (intake, structure, validation, approval, production .json). Progress is derived from files, no separate state store
+- "UI components": no application UI exists (bob_ui.py only draws video mock-ups); user access = Bob mode, skills.py list/status/check
+- Verification: 31 unit tests OK (venv build/dnb-venv); skills.py verify OK (11 skills); install into test workspace, tools and tests run from installed copy, uninstall rollback clean
+- End-to-end step 9 on dist/examples/sample_script_v1.md: approval recorded, production.py audio, sheet, video -> 61 s MP4 + SRT + review PNGs, production.json ok (say/ffmpeg ran unsandboxed, user-approved); review frame checked visually; test output removed
+- Not verified: running the skills inside the Bob UI; .env creation by the installer (sandbox hides .env* files); Windows/Linux step 9 (needs macOS)
+- Limits: generic renderer = storyboard text cards; mode cannot write renderer .py code
+- Open items for the user: install the package into the workspace if you want the skills live (dist/install.sh --scope workspace --target . --demobuilder-dir .); choose a licence

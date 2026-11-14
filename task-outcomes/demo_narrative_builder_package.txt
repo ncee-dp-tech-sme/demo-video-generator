@@ -1,0 +1,17 @@
+PROMPT: You are a coding agent assisting with creating a redistributable asset package. Based on previous work involving skills, rules, and prerequisites, generate a complete, production-ready package with the following specifications: (1) Create a redistributable asset and custom mode that incorporates all skills, rules, and prerequisites from the prior work session. (2) Structure the entire output in a `dist` folder using subdirectories as needed. (3) Include a comprehensive `README.md` in `dist` documenting overview, installation and setup, usage guidelines, all prerequisites, architecture and file structure. (4) Accept multiple input formats as sources for narrative generation: hosted blogs (URL), PDF, TXT, Word (.docx). (5) Implement a video narrative generation workflow that processes the input document, follows the same step-by-step methodology as previous work, generates potential follow-up questions at each step, and structures output sequentially. (6) Document all prerequisites, dependencies and system requirements. (7) Organize code, configuration, templates and documentation in subdirectories within `dist`. Generate the complete package structure, implementation code, and all supporting documentation.
+DATE: Sat 14 Nov 2026 19:15 CET
+
+OUTCOME
+- Package: dist/ (28 files), "Demo Narrative Builder" v1.0.0. README: dist/README.md
+- Custom mode: dist/modes/demo-narrative-builder.yaml (slug demo-narrative-builder; groups read, edit limited to md/txt/json/srt, execute, skill, todo)
+- Skills (5): video-narrative-workflow, narrative-source-ingest, narrative-fact-sheet, video-narrative-script, narrative-followup-questions
+- Rules (3, loaded only in the mode): lifecycle, security (untrusted sources, HTTPS, secrets), methodology (approval gate)
+- Tools: tools/ingest.py (URL, PDF, TXT/MD, DOCX; SSRF-guarded, defusedxml, size/time limits), tools/validate_script.py (timing, VO fit, follow-ups, gate)
+- Installer: install.sh / install.py (confirmation, backups, manifest, --uninstall rollback, --dry-run, --no-venv)
+- Templates, references (methodology, follow-up question bank), examples, 19 unit/security tests
+- Dependencies pinned and OSV-checked: pypdf 7.1.0, defusedxml 0.7.1, python-dotenv 1.2.4
+- Prior work captured: Demobuilder HexStrike + IBM Bob scripts (3-column table, approval gate, honesty note, production plan, task-outcomes rule), global coding standards
+- Verification: fresh install into build/ test workspace (venv + pip), 19/19 tests OK, sample script PASS, live HTTPS blog fetch OK, install into existing custom_modes.yaml + skill backup + uninstall restore OK; test workspace removed
+- Not verified: .env creation from .env.example during install (the Bob sandbox hides .env* files from commands); Windows; running the mode inside Bob UI
+- Video rendering (say/Pillow/ffmpeg pipeline) is not part of the package; documented as optional in README section 9
+- Open items for the user: choose a licence; try the mode in Bob (new task after install); decide whether scene renderers should become a generic package

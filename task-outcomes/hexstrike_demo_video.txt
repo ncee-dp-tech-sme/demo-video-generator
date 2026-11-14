@@ -1,0 +1,11 @@
+PROMPT: The narrative for the video is written in @HexStrike_AV_script_v1.md including timings, visuals and voice over.  Use your best judgement to create the demo video
+DATE: Sat 14 Nov 2026 17:34:31 CET
+
+OUTCOME
+- output/HexStrike_demo.mp4 (1920x1080, 24fps, 3:01, AAC audio) + output/HexStrike_demo.srt
+- Built by build_audio.py (macOS say VO, Daniel, timeline + mix) and build_video.py (Pillow frames -> bundled ffmpeg)
+- 9 scenes follow the script table; visual cues synced to spoken words; captions burned in
+- Scene 8 VO overran its 15s window (needed ~19s at 233wpm): window extended to ~19.7s, final scene shortened to ~10.3s
+- Visuals are stylised mock-ups; run.sh terminal output is illustrative
+- Setup: .venv created, requirements.txt, .env.example, README.md
+- 'say' required running unsandboxed (user-approved)

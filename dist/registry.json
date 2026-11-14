@@ -1,0 +1,109 @@
+{
+  "registry_version": 1,
+  "package": "demo-narrative-builder",
+  "mode": "demo-narrative-builder",
+  "orchestrator": {
+    "id": "video-narrative-workflow",
+    "title": "Workflow orchestrator",
+    "summary": "Runs steps 1 to 9 in order, or any single step on request, and keeps the todo list."
+  },
+  "support": [
+    {
+      "id": "narrative-followup-questions",
+      "title": "Follow-up questions",
+      "summary": "Generates 3 to 5 follow-up questions with defaults at the end of every step (1 to 9)."
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "id": "narrative-01-intake",
+      "title": "Intake",
+      "followup_step": "intake",
+      "summary": "Collect audience, goal, runtime, presenter, mandatory sections and CTA; write intake.json.",
+      "tool": null,
+      "requires": [],
+      "produces": ["intake.json"]
+    },
+    {
+      "step": 2,
+      "id": "narrative-02-ingest",
+      "title": "Ingest",
+      "followup_step": "ingest",
+      "summary": "Extract text from a blog URL, PDF, TXT/MD or DOCX into source.json and source.txt.",
+      "tool": "tools/ingest.py",
+      "requires": [],
+      "produces": ["source.json", "source.txt"]
+    },
+    {
+      "step": 3,
+      "id": "narrative-03-fact-sheet",
+      "title": "Fact sheet",
+      "followup_step": "facts",
+      "summary": "Turn the source into a ranked, traceable fact sheet (F1..Fn) with gaps.",
+      "tool": null,
+      "requires": ["source.json"],
+      "produces": ["factsheet.md"]
+    },
+    {
+      "step": 4,
+      "id": "narrative-04-structure",
+      "title": "Structure",
+      "followup_step": "structure",
+      "summary": "Propose and record the section map with time windows covering all mandatory sections.",
+      "tool": null,
+      "requires": ["factsheet.md", "intake.json"],
+      "produces": ["structure.md"]
+    },
+    {
+      "step": 5,
+      "id": "narrative-05-script",
+      "title": "Script",
+      "followup_step": "script",
+      "summary": "Write the timed TIMING | VISUAL | VO script from the fact sheet and section map.",
+      "tool": null,
+      "requires": ["factsheet.md", "structure.md", "intake.json"],
+      "produces": ["*_script_v*.md"]
+    },
+    {
+      "step": 6,
+      "id": "narrative-06-validate",
+      "title": "Validate",
+      "followup_step": "validate",
+      "summary": "Run validate_script.py until PASS; write validation.json.",
+      "tool": "tools/validate_script.py",
+      "requires": ["*_script_v*.md"],
+      "produces": ["validation.json"]
+    },
+    {
+      "step": 7,
+      "id": "narrative-07-production-plan",
+      "title": "Production plan",
+      "followup_step": "plan",
+      "summary": "Fill the production plan section of the script (deliverables, approach, assets, work plan, risks).",
+      "tool": "tools/validate_script.py",
+      "requires": ["*_script_v*.md", "validation.json"],
+      "produces": ["*_script_v*.md"]
+    },
+    {
+      "step": 8,
+      "id": "narrative-08-approval-gate",
+      "title": "Approval gate",
+      "followup_step": "approval",
+      "summary": "Ask for explicit approval; record it against the exact script version in approval.json.",
+      "tool": "tools/approval.py",
+      "requires": ["*_script_v*.md"],
+      "produces": ["approval.json"]
+    },
+    {
+      "step": 9,
+      "id": "narrative-09-video-production",
+      "title": "Video production",
+      "followup_step": "production",
+      "summary": "Render audio and video from the approved script; write production.json.",
+      "tool": "tools/production.py",
+      "requires": ["approval.json", "*_script_v*.md"],
+      "produces": ["production.json"]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+I now get the error  Error during agent chat completion: Error code: 400 - Too big: expected array to have <=128 items when sending a prompt
+Mon Nov  9 00:35:24 CET 2026
+
+Root Cause:
+The OpenAI Chat Completions API (and compatible providers like 1min.ai) enforces a hard limit of at most 128 items in the `tools` parameter array. When exporting all 149+ MCP tools directly into the prompt request payload, the API rejected the call with:
+"Error code: 400 - Too big: expected array to have <=128 items"
+
+Resolution:
+1. `core/hexstrike_tools.py`:
+   - Curated the OpenAI tools catalog by filtering out non-agent internal server management tools (e.g. process pausing/resuming, internal cache/telemetry queries, CLI UI formatters) and duplicate tool variants.
+   - Enforced a strict maximum tool cap of <= 125 tools in `build_hexstrike_openai_tools()`.
+   - Kept all 149+ tools registered and 100% executable inside `HexStrikeToolExecutor`.
+
+2. `core/agent.py`:
+   - Added a defensive bounding slice `HEXSTRIKE_OPENAI_TOOLS[:120]` when building the chat completion request kwargs.
+
+3. Validation:
+   - Updated unit tests in `tests/test_hexstrike_tools.py` to assert `len(HEXSTRIKE_OPENAI_TOOLS) <= 128`.
+   - All 20 test suite checks passed cleanly.

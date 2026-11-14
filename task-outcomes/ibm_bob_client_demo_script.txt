@@ -1,0 +1,17 @@
+PROMPT: Create a comprehensive 7-minute video script and production plan for demonstrating IBM Bob to clients. The video must include three mandatory sections: (1) Seller articulates client pain points and IBM Bob's value proposition, (2) Seller highlights use cases for IBM Bob, (3) Seller closes with a call to action offering options such as a workshop, deeper product dive, Proof of Experience engagement, or similar next steps. The video should be structured in two parts: Part 1 "Build" covers planning, scaffolding, and validating an initial application from an empty repository; Part 2 "Evolve" covers publishing to GitHub, implementing a requested feature, and preparing a merge-ready pull request. The narrative must demonstrate IBM Bob functioning within the GitHub workflow the client already uses, showing it reading issues, writing code, running tests, and committing and pushing code. Use materials from the @hexstrikesdlc/ repository to construct the narrative. Deliver a detailed script formatted similarly to @HexStrike_AV_script_v1.md that outlines all dialogue, scene descriptions, technical demonstrations, transitions, and visual elements. Request explicit approval of this script before proceeding with any video creation, asset development, or production work.
+FOLLOW-UPS: (1) "Approved with changes. Take recording approach B, seller name is Bobby, Enterprise Sales" (2) "Approved. Start production (steps 1-6 in section 5)."
+DATE: Sat 14 Nov 2026 18:10:18 CET
+
+OUTCOME
+- Script: IBM_Bob_Client_Demo_script_v2.md (v1 kept). Approved by user before production.
+- Video: output/IBM_Bob_Client_Demo.mp4 (1920x1080, 24fps, 7:01, AAC) + output/IBM_Bob_Client_Demo.srt
+- 14 scenes, ~760 spoken words, macOS `say` voice Daniel at 150 wpm; no scene overran its window.
+- Pipeline: demo_common.py (SCRIPT_FILE/BUILD_DIR env overrides, extra TTS fixes), build_bob_audio.py,
+  build_bob_video.py, bob_ui.py, bob_scenes_a.py (scenes 0-6), bob_scenes_b.py (scenes 7-13).
+  Intermediate files in build/bob/ (gitignored via build/). README.md and .env.example updated.
+- Visuals are stylised mock-ups (Bob panel, terminal, GitHub-style pages); on-screen label says so in Parts 1-2.
+  Part 2 test count (17) is illustrative; 16 tests / 38 files come from hexstrikesdlc/. Placeholders on screen:
+  <ORG>/<DEMO-REPO>, [EMAIL], [BOOKING LINK].
+- Fixes during review: missing arrow glyph (drawn as vector arrow), overlapping chips/rows in scenes 0, 1, 4, 11, 12, 13.
+- 'say' required running unsandboxed (user-approved).
+- Open items for the user: provide <ORG>/<DEMO-REPO>, [EMAIL], [BOOKING LINK]; review the MP4 and request changes.

@@ -1,0 +1,4 @@
+# Pinned to the latest stable releases checked against OSV.dev on Sat 14 Nov 2026 (no known vulnerabilities).
+pypdf==7.1.0
+defusedxml==0.7.1
+python-dotenv==1.2.4

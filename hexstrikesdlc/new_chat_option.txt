@@ -1,0 +1,14 @@
+Build in an option in the chat window to start a new chat so older context is erased and can be replaced with a new prompt.
+Mon Nov  9 01:24:41 CET 2026
+
+Successfully implemented the "New Chat" option in the chat interface:
+1. Updated `templates/index.html`:
+   - Added a "➕ New Chat" button in the `.chat-header` next to the active model selector.
+
+2. Updated `static/js/app.js`:
+   - Added click listener for `#newChatBtn`.
+   - Clears `conversationHistory = []` so the agent starts a completely fresh context window without previous prompt history.
+   - Clears and restores the chat stream to the initial welcome screen.
+   - Clears any pending input or state and focuses the input prompt area.
+
+3. Verified full test suite execution (23 tests passed).

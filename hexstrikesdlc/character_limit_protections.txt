@@ -1,0 +1,26 @@
+Can you build in protections against this error "An error occurred while generating assessment: Error code: 400 - Messages, tools and response format exceed the 100,000 character limit."
+Mon Nov  9 00:45:59 CET 2026
+
+Root Cause:
+The total JSON size across `messages`, `tools`, and `response_format` sent to the 1min.ai / OpenAI Chat Completions API must be strictly under 100,000 characters. Previously, the raw unminified tools schema alone exceeded 101,000 characters, causing any subsequent request turn to immediately fail.
+
+Multi-Layered Protections Implemented:
+1. Tool Schema Minification (`clean_tool_schema` in `core/hexstrike_tools.py`):
+   - Stripped unnecessary Pydantic title fields and nested metadata.
+   - Truncated descriptions to concise single-line explanations.
+   - Reduced full schema size from ~102,000 chars down to ~9,000 - 15,000 chars.
+
+2. Query-Aware Tool Selection (`select_tools_for_query` in `core/hexstrike_tools.py`):
+   - Injects the ~25 universal core pentest tools plus domain-specific tools matched from user query keywords (e.g. AWS/cloud, Kubernetes, binary analysis, API security).
+   - Strict tool character budget cap (< 20,000 characters).
+
+3. Tool Output & Message Compaction (`core/agent.py`):
+   - Large raw tool outputs (e.g., nmap, gobuster, nuclei dumps) are truncated to <= 4,000 characters before being added to messages (`_truncate_tool_result`).
+   - Prior to sending chat completions, messages are evaluated and compacted (`_compact_messages_if_needed`) to stay within a 55,000-character budget.
+
+4. Automatic Fallback Retry (`core/agent.py`):
+   - If a 400 character limit error is raised by the provider, the agent catches it, automatically performs emergency compaction (top 10 core tools + heavily compacted messages), and retries the turn seamlessly.
+
+5. Test Suite Verification:
+   - Added unit tests in `tests/test_hexstrike_tools.py` verifying tool character budgets (< 25,000 chars), query selection, schema cleaning, output truncation, and message compaction.
+   - All 23 unit tests passed.

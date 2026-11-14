@@ -1,0 +1,19 @@
+# Why Release Notes Get Ignored
+
+Release notes are written by engineers and skipped by almost everyone else. A survey of 120 product teams found that only one in five customers ever opens them.
+
+## The problem
+
+Most release notes list changes in the order the code was merged. Readers care about what changed for them, so they stop reading after the first technical line. Support teams then answer the same questions again and again.
+
+## What works better
+
+Teams that group changes by user benefit see more engagement. A short summary at the top, three headline changes, and a link to the full list is enough. The survey reported that this format doubled the open rate within two releases.
+
+## Practical steps
+
+Start with the benefit, not the ticket number. Keep each entry to one sentence. Put breaking changes first and mark them clearly. Add a single screenshot only when the change is visual. Review the notes with someone who did not write the code.
+
+## Results
+
+After six months, the teams that adopted the format reported fewer support tickets about new features and faster adoption of new settings. The authors caution that the sample was small and self-selected.

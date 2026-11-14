@@ -1,0 +1,10 @@
+PROMPT: {{exact user prompt}}
+FOLLOW-UPS: {{numbered user answers, or "none"}}
+DATE: {{output of `date`}}
+
+OUTCOME
+- Source: {{type}} {{ref}} ({{word_count}} words, {{section_count}} sections)
+- Script: narratives/{{slug}}/{{slug}}_script_v{{N}}.md ({{scenes}} scenes, {{runtime}}, {{words}} words), validation {{PASS|FAIL}}
+- Fact sheet: narratives/{{slug}}/factsheet.md; follow-ups: narratives/{{slug}}/followups.md
+- Approval status: {{awaiting | approved | approved with changes}}
+- Open items for the user: {{placeholders to fill, unanswered blocking questions}}
