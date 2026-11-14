@@ -4,6 +4,7 @@
 # Change log
 # Sat 14 Nov 2026 17:30 CET - Initial version.
 # Sat 14 Nov 2026 17:40 CET - Cap speech rate at 235 wpm; borrow time from next scene instead.
+# Sat 14 Nov 2026 23:12 CET - Fail when `say` returns an empty/silent wav (happens inside the Bob sandbox) instead of building a silent video.
 
 import json
 import subprocess
@@ -17,14 +18,18 @@ SR = 44100
 LOCK_CUE = (5, "Guardrails on")   # scene index + phrase; shared with the video stage
 
 
-# Synthesise one text part to a wav file and return samples - Sat 14 Nov 2026 17:30 CET
+# Synthesise one text part to a wav file and return samples; raises if `say` produced no sound - Sat 14 Nov 2026 23:12 CET
 def synth(text, rate, path):
     subprocess.run(
         ["say", "-v", C.VOICE, "-r", str(rate), "-o", str(path),
          f"--data-format=LEI16@{SR}", C.tts_text(text)],
         check=True, timeout=120)
     with wave.open(str(path), "rb") as w:
-        return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
+        samples = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
+    if samples.size == 0 or float(np.max(np.abs(samples))) == 0.0:
+        raise RuntimeError("`say` produced no audio (empty wav). Run the audio stage outside the Bob sandbox "
+                           "(macOS speech services are blocked there) and check that the voice is installed.")
+    return samples
 
 
 # Fit a scene's VO inside its window by raising the speech rate if needed - Sat 14 Nov 2026 17:30 CET
