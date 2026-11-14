@@ -5,10 +5,14 @@
 # Sat 14 Nov 2026 19:14 CET - Initial version: ingest formats, SSRF/URL guards, DOCX entity attack, validator.
 # Sat 14 Nov 2026 19:28 CET - Skill system: registry consistency, approval record, step 9 gate, step status.
 # Sat 14 Nov 2026 20:04 CET - README check finds the merged README in the package root or the repository root.
+# Sat 14 Nov 2026 22:06 CET - Storyboard and scene engine tests (step 9 animated screens).
+# Sat 14 Nov 2026 22:30 CET - HigherLogic HTML fallback test and long heading fitting test.
 
 import contextlib
 import io
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -23,6 +27,8 @@ import ingest  # noqa: E402
 import production  # noqa: E402
 import skills  # noqa: E402
 import validate_script as V  # noqa: E402
+
+SB = production.SB   # pipeline/storyboard.py (pure Python)
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 SAMPLE_TXT = ROOT / "examples" / "sample_source.txt"
@@ -119,6 +125,31 @@ class IngestTests(unittest.TestCase):
         self.assertNotIn("menu", text)
         self.assertNotIn("legal", text)
         self.assertEqual(doc.sections()[0]["heading"], "Heading")
+
+    def test_html_higherlogic_nested_div_fallback(self):
+        words = " ".join(["practitioner"] * 120)
+        html = (
+            "<html><head><title>Community Blog</title><script>evil()</script></head><body>"
+            "<form method='post' id='MasterPageForm'>"
+            "<div class='site-nav'><p>navigation links</p></div>"
+            "<div class='cookie-banner'><p>Accept all cookies</p></div>"
+            "<div id='ContentColumn' class='col-md-12'>"
+            "  <div class='blogs-block'>"
+            "    <h1>Guardium QRadar Integration</h1>"
+            f"    <p>{words}</p>"
+            "  </div>"
+            "</div>"
+            "<footer class='global-footer'><p>Copyright 2026</p></footer>"
+            "</form></body></html>"
+        )
+        doc = ingest.parse_html(html.encode(), "utf-8")
+        sections = doc.sections()
+        self.assertEqual(len(sections), 1)
+        self.assertEqual(sections[0]["heading"], "Guardium QRadar Integration")
+        self.assertIn("practitioner", sections[0]["text"])
+        self.assertNotIn("navigation", sections[0]["text"])
+        self.assertNotIn("cookies", sections[0]["text"])
+        self.assertNotIn("Copyright", sections[0]["text"])
 
     def test_unsupported_extension_and_missing_file(self):
         f = self.dir / "x.exe"
@@ -318,7 +349,8 @@ class ApprovalAndProductionTests(unittest.TestCase):
 
     def test_pipeline_folder_is_bundled_and_is_the_default(self):
         for name in ("demo_common.py", "build_audio.py", "build_video.py", "build_bob_audio.py", "build_bob_video.py",
-                     "bob_ui.py", "bob_scenes_a.py", "bob_scenes_b.py", "generic_audio.py", "generic_video.py"):
+                     "bob_ui.py", "bob_scenes_a.py", "bob_scenes_b.py", "generic_audio.py", "generic_video.py",
+                     "storyboard.py", "scene_engine.py"):
             self.assertTrue((ROOT / "pipeline" / name).is_file(), name)
         self.assertEqual(production.demobuilder_dir(), (ROOT / "pipeline").resolve())
         self.assertEqual(Path(production.C.DEMOBUILDER_DIR), ROOT / "pipeline")
@@ -328,6 +360,111 @@ class ApprovalAndProductionTests(unittest.TestCase):
         res = production.run(self.script, args)
         self.assertFalse(res["ok"])
         self.assertFalse((self.folder / "production").exists())
+
+
+# Storyboard planner, user storyboard merge, draft writing and the animated renderer - Sat 14 Nov 2026 22:06 CET
+class StoryboardTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.folder = Path(self.tmp.name)
+        self.script = self.folder / "demo_script_v1.md"
+        self.script.write_text(SAMPLE_SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_sample_script_gets_a_valid_automatic_storyboard(self):
+        sb = SB.auto_storyboard(self.script.read_text(encoding="utf-8"))
+        self.assertEqual(len(sb["scenes"]), 4)
+        for sc in sb["scenes"]:
+            self.assertIn(sc["layout"], SB.LAYOUTS)
+            self.assertEqual(SB.normalize_scene(sc)[1], [])
+        self.assertGreater(len({sc["layout"] for sc in sb["scenes"]}), 1)     # not one card type for every scene
+
+    def test_invalid_user_scenes_fall_back_and_are_reported(self):
+        user = {"scenes": [{"layout": "hologram"}, {"layout": "cards", "cards": []}]}
+        sb, problems = SB.merge(self.script.read_text(encoding="utf-8"), user)
+        self.assertEqual(len(sb["scenes"]), 4)
+        self.assertTrue(any("scene 1" in p and "layout" in p for p in problems))
+        self.assertTrue(any("scene 2" in p for p in problems))
+        self.assertTrue(any("2 scenes" in p for p in problems))
+        for sc in sb["scenes"]:
+            self.assertEqual(SB.normalize_scene(sc)[1], [])
+
+    def test_valid_user_scene_replaces_the_automatic_one_and_limits_apply(self):
+        cards = [{"title": "T" * 500, "text": "x"} for _ in range(30)]
+        spec, problems = SB.normalize_scene({"layout": "cards", "cards": cards, "badges": [{"text": "OK"}] * 9})
+        self.assertEqual(problems, [])
+        self.assertEqual(len(spec["cards"]), SB.LIMITS["cards"])
+        self.assertLessEqual(len(spec["cards"][0]["title"]), 140)
+        self.assertLessEqual(len(spec["badges"]), 3)
+        sb, _ = SB.merge(self.script.read_text(encoding="utf-8"),
+                         {"scenes": [{"layout": "terminal", "lines": ["$ ls", "ok"]}]})
+        self.assertEqual(sb["scenes"][0]["layout"], "terminal")
+        self.assertEqual(sb["source"], "storyboard.json")
+
+    def test_storyboard_command_writes_a_draft_and_never_overwrites_without_force(self):
+        out = self.folder / "storyboard.json"
+        self.assertEqual(run_cli(production.main, ["storyboard", str(self.script)])[0], 0)
+        self.assertEqual(len(json.loads(out.read_text(encoding="utf-8"))["scenes"]), 4)
+        out.write_text('{"mine": true}', encoding="utf-8")
+        self.assertEqual(run_cli(production.main, ["storyboard", str(self.script)])[0], 1)
+        self.assertEqual(out.read_text(encoding="utf-8"), '{"mine": true}')
+        self.assertEqual(run_cli(production.main, ["storyboard", str(self.script), "--force"])[0], 0)
+
+    def test_check_reports_the_storyboard_in_use(self):
+        rep = production.check(self.script)
+        self.assertEqual(rep["storyboard"]["source"], "auto")
+        self.assertEqual(len(rep["storyboard"]["layouts"]), 4)
+        (self.folder / "storyboard.json").write_text("not json", encoding="utf-8")
+        rep = production.check(self.script)
+        self.assertTrue(any("storyboard:" in w and "JSON" in w for w in rep["warnings"]))
+
+    def test_review_frames_are_animated_screens_not_text_cards(self):
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        env = {**os.environ, "DEMOBUILDER_DIR": str(ROOT / "pipeline"), "SCRIPT_FILE": str(self.script),
+               "BUILD_DIR": str(self.folder / "build"), "VIDEO_OUT_DIR": str(self.folder / "out"), "VIDEO_NAME": "t"}
+        r = subprocess.run([sys.executable, str(ROOT / "pipeline" / "generic_video.py"), "sheet", str(self.folder / "f")],
+                           cwd=self.folder, env=env, capture_output=True, text=True, timeout=300)
+        self.assertEqual(r.returncode, 0, r.stderr[-400:])
+        frames = sorted(self.folder.glob("f_*.png"))
+        self.assertEqual(len(frames), 4)
+        from PIL import Image
+        for f in frames:
+            im = Image.open(f).convert("RGB")
+            self.assertEqual(im.size, (960, 540))
+            self.assertGreater(len(im.resize((96, 54)).getcolors(96 * 54) or []), 150)   # many colours: panels, shapes, text
+        self.assertNotIn("placeholder visuals", (ROOT / "pipeline" / "generic_video.py").read_text(encoding="utf-8"))
+
+    def test_long_heading_fit_and_wrap(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        sys.path.insert(0, str(ROOT / "pipeline"))
+        import scene_engine as SE
+        heading_90 = "Building Guardium Exposure Manager → QRadar Log Sources with the Universal Cloud REST API"
+        self.assertGreaterEqual(len(heading_90), 85)
+        spec_with = {
+            "layout": "flow",
+            "heading": heading_90,
+            "nodes": [{"label": "Node A", "text": "Details"}, {"label": "Node B", "text": "Details"}],
+            "badges": [{"text": "UCC Protocol", "color": "cyan"}]
+        }
+        spec_without = {
+            "layout": "flow",
+            "nodes": [{"label": "Node A", "text": "Details"}, {"label": "Node B", "text": "Details"}],
+            "badges": [{"text": "UCC Protocol", "color": "cyan"}]
+        }
+        im1 = Image.new("RGB", (1920, 1080), SE.BG)
+        im2 = Image.new("RGB", (1920, 1080), SE.BG)
+        r1 = SE.draw_scene(im1, 0, 5.0, 10.0, spec_with)
+        r2 = SE.draw_scene(im2, 0, 5.0, 10.0, spec_without)
+        self.assertEqual(r1.size, (1920, 1080))
+        self.assertNotEqual(r1.tobytes(), r2.tobytes())
 
 
 if __name__ == "__main__":

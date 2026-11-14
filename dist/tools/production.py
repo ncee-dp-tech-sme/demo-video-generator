@@ -3,15 +3,17 @@
 #
 # Usage:
 #   python production.py check <script.md>
+#   python production.py storyboard <script.md> [--force]      (writes the draft storyboard.json next to the script)
 #   python production.py run <script.md> --stage audio|still|sheet|video|all --confirmed [--at SEC]
 #        [--custom-audio build_x_audio.py --custom-video build_x_video.py]
-# Output (inside the script's folder): production/build, production/review, production/output, production.json
+# Output (inside the script's folder): storyboard.json, production/build, production/review, production/output, production.json
 # Exit codes: 0 ok, 1 gate or prerequisite failed or a stage failed, 2 unusable input.
 #
 # Change log
 # Sat 14 Nov 2026 19:28 CET - Initial version: gate check, prerequisites, audio/still/sheet/video stages.
 # Sat 14 Nov 2026 21:09 CET - Pipeline files are bundled in pipeline/, which is the default when DEMOBUILDER_DIR is unset;
 #                             default Python falls back to the installer's .venv.
+# Sat 14 Nov 2026 22:03 CET - Storyboard: `storyboard` command writes storyboard.json; check reports it; stages get STORYBOARD_FILE.
 
 import argparse
 import hashlib
@@ -30,6 +32,9 @@ import common as C
 import validate_script as V
 
 PIPELINE_DIR = C.PIPELINE_DIR
+sys.path.insert(0, str(PIPELINE_DIR))
+import storyboard as SB  # noqa: E402  (pure Python, no Pillow needed)
+
 CUSTOM_NAME = re.compile(r"^build_[A-Za-z0-9_]+\.py$")
 FONT = Path("/System/Library/Fonts/HelveticaNeue.ttc")
 STAGE_TIMEOUT = {"audio": 1800, "still": 300, "sheet": 900, "video": 7200}
@@ -52,6 +57,26 @@ def pipeline_python():
     return sys.executable
 
 
+# Storyboard that step 9 will use for a script: source, layout per scene and problems found - Sat 14 Nov 2026 22:03 CET
+def storyboard_info(script):
+    try:
+        sb, problems = SB.load(script)
+    except (OSError, ValueError) as exc:
+        return {"source": "none", "layouts": [], "problems": [f"storyboard could not be built: {type(exc).__name__}"]}
+    return {"source": sb["source"], "layouts": [s["layout"] for s in sb["scenes"]], "problems": problems}
+
+
+# Write the draft storyboard.json next to the script; never overwrites without force - Sat 14 Nov 2026 22:03 CET
+def write_storyboard(script, force=False):
+    script = Path(script).expanduser().resolve()
+    out = script.parent / "storyboard.json"
+    if out.exists() and not force:
+        return {"ok": False, "reason": f"{out.name} exists; pass --force to replace it", "path": str(out)}
+    sb = SB.auto_storyboard(script.read_text(encoding="utf-8"))
+    out.write_text(json.dumps(sb, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {"ok": True, "path": str(out), "scenes": len(sb["scenes"]), "layouts": [s["layout"] for s in sb["scenes"]]}
+
+
 # Check the approval gate, the script and the machine; returns a report dict - Sat 14 Nov 2026 19:28 CET
 def check(script):
     script = Path(script).expanduser().resolve()
@@ -68,6 +93,9 @@ def check(script):
     else:
         problems += [f"pipeline file missing: {demo / n}" for n in ("demo_common.py", "build_audio.py", "build_video.py")
                      if not (demo / n).is_file()]
+    problems += [f"pipeline file missing: {PIPELINE_DIR / n}" for n in
+                 ("generic_audio.py", "generic_video.py", "scene_engine.py", "storyboard.py", "bob_ui.py")
+                 if not (PIPELINE_DIR / n).is_file()]
     if sys.platform != "darwin" or not shutil.which("say"):
         problems.append("macOS `say` command not found (voice-over synthesis needs macOS)")
     if not FONT.is_file():
@@ -79,8 +107,10 @@ def check(script):
             problems.append(f"{py} lacks pillow, numpy, imageio-ffmpeg or python-dotenv")
     except (OSError, subprocess.SubprocessError):
         problems.append(f"cannot run pipeline python {py}")
+    sbi = storyboard_info(script)
     return {"ok": not problems, "script": script.name, "approval": appr, "pipeline_python": py,
-            "demobuilder_dir": str(demo), "problems": problems, "warnings": val["warnings"]}
+            "demobuilder_dir": str(demo), "storyboard": sbi, "problems": problems,
+            "warnings": val["warnings"] + ["storyboard: " + p for p in sbi["problems"]]}
 
 
 # sha256 and size of an output file - Sat 14 Nov 2026 19:28 CET
@@ -95,7 +125,7 @@ def run_stage(stage, args, script, dirs, py):
     env = {**os.environ, "DEMOBUILDER_DIR": str(demo), "SCRIPT_FILE": str(script),
            "BUILD_DIR": str(dirs["build"]), "VIDEO_OUT_DIR": str(dirs["output"]),
            "VIDEO_NAME": re.sub(r"_script_v\d+$", "", script.stem), "SPEECH_RATE": str(C.SPEECH_WPM),
-           "VOICE": C.VOICE, "FPS": str(C.FPS)}
+           "VOICE": C.VOICE, "FPS": str(C.FPS), "STORYBOARD_FILE": str(script.parent / "storyboard.json")}
     if args.custom_audio:
         audio, video = str(demo / args.custom_audio), str(demo / args.custom_video)
     else:
@@ -164,6 +194,7 @@ def run(script, args):
     video_done = ran_ok and "video" in stages and any(o["path"].endswith(".mp4") for o in outputs)
     rec = {"ok": bool(video_done or (prev.get("ok") and ran_ok)), "last_stage_ok": ran_ok, "script": script.name,
            "script_sha256": sha, "engine": "custom" if args.custom_video else "generic",
+           "storyboard": report["storyboard"]["source"],
            "stages": results, "outputs": outputs, **timeline_facts(dirs["build"], script.read_text(encoding="utf-8"))}
     pf.write_text(json.dumps(rec, indent=2), encoding="utf-8")
     return rec
@@ -174,6 +205,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Step 9: produce the video from an approved script")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("check").add_argument("script")
+    sbp = sub.add_parser("storyboard")
+    sbp.add_argument("script")
+    sbp.add_argument("--force", action="store_true", help="replace an existing storyboard.json")
     r = sub.add_parser("run")
     r.add_argument("script")
     r.add_argument("--stage", choices=["audio", "still", "sheet", "video", "all"], required=True)
@@ -190,6 +224,10 @@ def main(argv=None):
         rep = check(path)
         print(json.dumps(rep, indent=2))
         return 0 if rep["ok"] else 1
+    if args.cmd == "storyboard":
+        rec = write_storyboard(path, args.force)
+        print(json.dumps(rec, indent=2))
+        return 0 if rec["ok"] else 1
     if not args.confirmed:
         print("Refusing to run: pass --confirmed after the user has confirmed the pre-run summary", file=sys.stderr)
         return 2
