@@ -47,18 +47,23 @@ Package version 2.0.0 (skill system; see the change notes in section 13).
 | `requirements.txt`, `.env.example` | Pipeline dependencies and settings (`VOICE`, `SPEECH_RATE`, `FPS`, `LOG_LEVEL`, `SCRIPT_FILE`, `BUILD_DIR`) |
 | `dist/` | Sources of the Demo Narrative Builder package (layout in 6.1) |
 | `releases/` | The ready-to-install zip `demo-narrative-builder-2.0.0.zip` and its `SHA256SUMS` |
+| `docs/README.md` | Copy of this document (kept identical to the root `README.md`) |
 | `hexstrikesdlc/`, `task-outcomes/` | Source facts and task records |
 
 Not in git (see `.gitignore`): `.env`, `.venv/`, `build/`, `output/` (rendered videos), `.bob/`, caches.
 
-### 1.2 The two demo videos and the pipeline
+### 1.2 The demo videos and the pipeline
 
-| Video | Script | Output |
+The repository contains the **scripts and the code that renders the videos, not the rendered videos**. The
+generated files (`output/*.mp4`, `output/*.srt`, plus intermediate audio and frames in `build/`) are git-ignored
+and are created on your machine when you run the pipeline (section 10; macOS is needed for the `say` voice-over).
+
+| Video | Script (in the repository) | Rendered locally to (not in the repository) |
 |---|---|---|
-| HexStrike deep-dive (~3:01) | `HexStrike_AV_script_v1.md` | `output/HexStrike_demo.mp4` |
-| IBM Bob client demo (~7:01) | `IBM_Bob_Client_Demo_script_v2.md` | `output/IBM_Bob_Client_Demo.mp4` |
+| HexStrike deep-dive (~3:01) | `HexStrike_AV_script_v1.md` | `output/HexStrike_demo.mp4` + `.srt` |
+| IBM Bob client demo (~7:01) | `IBM_Bob_Client_Demo_script_v2.md` | `output/IBM_Bob_Client_Demo.mp4` + `.srt` |
 
-Both: 1920x1080, 24 fps, macOS `say` voice-over, burned-in captions plus `.srt`.
+Each rendered video is 1920x1080 at 24 fps with macOS `say` voice-over and burned-in captions. The pipeline has two stages:
 
 1. Audio stage - synthesises the VO per scene with macOS `say`, fits it to each scene window (raises the rate up
    to 235 wpm, then borrows time from the next scene), writes `timeline.json` and mixes VO + ambient bed + sfx
@@ -324,8 +329,9 @@ cd <root>/.bob/demo-narrative-builder
   mode block, restores backed-up originals and saves your `.env` to the backups folder.
 - Update: uninstall, download the new zip (verify its checksum), install again.
 - Rebuild the zip after changing `dist/` (maintainers): bump `dist/VERSION`, copy `dist/` to a folder named
-  `demo-narrative-builder/` without `.DS_Store`, `__pycache__`, `*.pyc`, `.gitignore`, `.env` and `narratives/`,
-  copy this `README.md` into it, zip it with `zip -r -X`, write the checksum to `releases/SHA256SUMS`
+  `demo-narrative-builder/` without `.DS_Store`, `__pycache__`, `*.pyc`, `.gitignore`, `.env` and `narratives/`
+  (first copy this `README.md` to `docs/README.md` and `dist/README.md` so all three stay identical),
+  zip it with `zip -r -X`, write the checksum to `releases/SHA256SUMS`
   (`shasum -a 256 <zip> > SHA256SUMS`) and update the file names in this document.
 
 ---
@@ -446,7 +452,7 @@ Any step skill can also be entered directly; `skills.py check` verifies the file
 
 ```text
 dist/                               (demo-narrative-builder/ in the zip)
-  README.md                         this document (only in the zip; in the repository it is the root README.md)
+  README.md                         this document (identical copy of the repository root README.md)
   VERSION                           2.0.0
   registry.json                     skill catalog: steps 1-9, support and orchestrator skills, files in and out
   requirements.txt                  pinned Python dependencies
@@ -673,4 +679,4 @@ replace the earlier five skills; `narrative-source-ingest` became `narrative-02-
 video production, and the outcome record became the task-completion duty of the orchestrator. New: `registry.json`,
 `skills.py`, `approval.py`, `production.py`, `pipeline/`, `structure.md`, `intake.json`, `validation.json`,
 `approval.json`, `production.json`, production plan template, `--require-plan`. Upgrade: `install.py --uninstall`, download the new zip, install again (old skill names are removed by the uninstall).
-The former root and `dist/` READMEs were merged into this single document, and the zip checksum moved to `releases/SHA256SUMS`.
+The former root and `dist/` READMEs were merged into this single document (copies in `docs/` and `dist/` are kept identical), and the zip checksum moved to `releases/SHA256SUMS`.
